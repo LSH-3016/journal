@@ -55,24 +55,24 @@ except Exception as e:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 채팅 모델 정의
-class ChatMessage(Base):
-    __tablename__ = "chat_messages"
+# 메시지 모델 정의
+class Message(Base):
+    __tablename__ = "messages"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(String(255), index=True, nullable=False)
-    message = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
 # 테이블 생성
 Base.metadata.create_all(bind=engine)
 
 # Pydantic 모델
-class ChatMessageResponse(BaseModel):
+class MessageResponse(BaseModel):
     id: str  # UUID를 문자열로 반환
     user_id: str
-    message: str
-    timestamp: datetime
+    content: str
+    created_at: datetime
     
     class Config:
         from_attributes = True
@@ -87,47 +87,61 @@ def get_db():
 
 app = FastAPI()
 
-@app.get("/chat/messages", response_model=List[ChatMessageResponse])
-def get_chat_messages(
+@app.get("/messages", response_model=List[MessageResponse])
+def get_messages(
     user_id: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db)
 ):
     """
-    채팅 기록을 가져오는 엔드포인트
+    저장된 메시지를 가져오는 엔드포인트
     
     - user_id: 특정 사용자의 메시지만 가져올 때 사용 (선택사항)
-    - limit: 가져올 메시지 수 (기본값: 50)
+    - limit: 가져올 메시지 수 (기본값: 100)
     - offset: 건너뛸 메시지 수 (페이지네이션용, 기본값: 0)
     """
-    query = db.query(ChatMessage)
+    query = db.query(Message)
     
-    # 사용자 필터링 (선택사항)
+    # 사용자별 필터링 (선택사항)
     if user_id:
-        query = query.filter(ChatMessage.user_id == user_id)
+        query = query.filter(Message.user_id == user_id)
     
-    # 최신 메시지부터 정렬하고 페이지네이션 적용
-    messages = query.order_by(ChatMessage.timestamp.desc()).offset(offset).limit(limit).all()
-    
+    messages = query.order_by(Message.created_at.asc()).offset(offset).limit(limit).all()
     return messages
 
 
-# 채팅 메시지 생성용 Pydantic 모델
-class ChatMessageCreate(BaseModel):
+# 메시지 생성용 Pydantic 모델
+class MessageCreate(BaseModel):
     user_id: str
-    message: str
+    content: str
 
-@app.post("/chat/messages", response_model=ChatMessageResponse)
-def create_chat_message(message: ChatMessageCreate, db: Session = Depends(get_db)):
+@app.post("/messages", response_model=MessageResponse)
+def create_message(message: MessageCreate, db: Session = Depends(get_db)):
     """
-    새로운 채팅 메시지를 생성하는 엔드포인트
+    새로운 메시지를 저장하는 엔드포인트
     """
-    db_message = ChatMessage(
+    db_message = Message(
         user_id=message.user_id,
-        message=message.message
+        content=message.content
     )
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
     return db_message
+
+@app.get("/users/{user_id}/messages", response_model=List[MessageResponse])
+def get_user_messages(
+    user_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    특정 사용자의 메시지만 가져오는 엔드포인트
+    """
+    messages = db.query(Message).filter(
+        Message.user_id == user_id
+    ).order_by(Message.created_at.asc()).offset(offset).limit(limit).all()
+    
+    return messages
