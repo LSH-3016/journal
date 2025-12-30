@@ -25,7 +25,7 @@ class BedrockService:
     
     async def summarize_content(self, content: str) -> str:
         """
-        주어진 내용을 Claude 3 Haiku를 사용하여 요약합니다.
+        주어진 내용을 Claude를 사용하여 요약합니다.
         
         Args:
             content: 요약할 텍스트 내용
@@ -41,31 +41,27 @@ class BedrockService:
         if not content or not content.strip():
             raise ValueError('요약할 내용이 없습니다.')
         
-        # 내용 길이 제한 (Claude 3 Haiku 토큰 제한 고려)
+        # 내용 길이 제한 (토큰 제한 고려)
         if len(content) > 50000:  # 약 50KB 제한
             content = content[:50000] + "..."
         
-        # Claude 3 Haiku 모델을 위한 개선된 프롬프트
-        prompt = f"""Human: 다음은 한 사람이 하루 동안 작성한 일기 내용들입니다. 이를 바탕으로 따뜻하고 공감적인 톤으로 요약해주세요.
+        # System prompt 설정
+        system_prompt = """너는 일기를 매일 작성하는 맞춤법과 문단 나누기에 엄격한 학생이야."""
 
+        # User message 설정
+        user_message = f"""
+        일기 형식으로 작성하고, 줄글 형식, 1인칭 시점으로 요약해줘. 날짜는 따로 적지않아도 돼.
 일기 내용:
-{content}
-
-요약 지침:
-- 2-3문단으로 작성해주세요
-- 개인적이고 따뜻한 톤을 사용해주세요
-- 일기 작성자에게 격려와 위로가 되도록 해주세요
-- 주요 감정이나 경험을 포함해주세요
-- 긍정적인 메시지로 마무리해주세요
-Assistant: """
+{content}"""
         
         # Bedrock 요청 페이로드 구성
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1000,
+            "system": system_prompt,
             "messages": [{
                 "role": "user",
-                "content": prompt
+                "content": user_message
             }]
         }
         

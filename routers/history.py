@@ -13,17 +13,33 @@ router = APIRouter(prefix="/history", tags=["history"])
 def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
     """
     새로운 기록을 저장하는 엔드포인트
+    같은 날짜에 같은 사용자의 기록이 이미 있으면 덮어씁니다.
     """
-    db_history = History(
-        username=history.username,
-        content=history.content,
-        record_date=history.record_date,
-        tags=history.tags
-    )
-    db.add(db_history)
-    db.commit()
-    db.refresh(db_history)
-    return db_history
+    # 같은 날짜, 같은 사용자의 기록이 있는지 확인
+    existing_history = db.query(History).filter(
+        History.username == history.username,
+        History.record_date == history.record_date
+    ).first()
+    
+    if existing_history:
+        # 기존 기록이 있으면 업데이트 (덮어쓰기)
+        existing_history.content = history.content
+        existing_history.tags = history.tags
+        db.commit()
+        db.refresh(existing_history)
+        return existing_history
+    else:
+        # 기존 기록이 없으면 새로 생성
+        db_history = History(
+            username=history.username,
+            content=history.content,
+            record_date=history.record_date,
+            tags=history.tags
+        )
+        db.add(db_history)
+        db.commit()
+        db.refresh(db_history)
+        return db_history
 
 @router.get("", response_model=List[HistoryResponse])
 def get_history(

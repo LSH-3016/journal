@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 
 from database import get_db
@@ -54,16 +54,57 @@ def get_messages(
     """
     query = db.query(Message)
     
-    # 오늘 날짜 필터링
-    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-    query = query.filter(Message.created_at >= today_start, Message.created_at <= today_end)
+    # 사용자별 필터링 (선택사항)
+    if user_id:
+        query = query.filter(Message.user_id == user_id)
+    
+    # 모든 메시지를 가져온 후 Python에서 날짜 필터링
+    all_messages = query.order_by(Message.created_at.asc()).all()
+    
+    # 오늘 날짜 (UTC 기준)
+    today = datetime.utcnow().date()
+    
+    # 오늘 날짜의 메시지만 필터링
+    today_messages = [
+        msg for msg in all_messages 
+        if msg.created_at.date() == today
+    ]
+    
+    # 페이지네이션 적용
+    paginated_messages = today_messages[offset:offset + limit]
+    
+    # UUID를 문자열로 변환
+    return [
+        MessageResponse(
+            id=str(msg.id),
+            user_id=msg.user_id,
+            content=msg.content,
+            created_at=msg.created_at
+        )
+        for msg in paginated_messages
+    ]
+
+@router.get("/debug/all", response_model=List[MessageResponse])
+def get_all_messages_debug(
+    user_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    디버깅용: 날짜 필터 없이 모든 메시지를 가져오는 엔드포인트
+    
+    - user_id: 특정 사용자의 메시지만 가져올 때 사용 (선택사항)
+    - limit: 가져올 메시지 수 (기본값: 100)
+    - offset: 건너뛸 메시지 수 (페이지네이션용, 기본값: 0)
+    """
+    query = db.query(Message)
     
     # 사용자별 필터링 (선택사항)
     if user_id:
         query = query.filter(Message.user_id == user_id)
     
-    messages = query.order_by(Message.created_at.asc()).offset(offset).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(offset).limit(limit).all()
     
     # UUID를 문자열로 변환
     return [

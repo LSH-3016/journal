@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import date
 import re
 
 from database import get_db
 from models.message import Message
-from schemas.summary import SummaryRequest, SummaryResponse
+from models.history import History
+from schemas.summary import SummaryRequest, SummaryResponse, SummaryExistsResponse
 from services.bedrock import bedrock_service
 
 router = APIRouter(prefix="/summary", tags=["summary"])
@@ -79,3 +81,43 @@ async def get_summary(
     - user_id: 요약할 사용자의 ID
     """
     return await _get_user_messages_summary(user_id, db)
+
+@router.get("/check/{user_id}", response_model=SummaryExistsResponse)
+async def check_today_summary_exists(
+    user_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    오늘 날짜의 요약이 이미 존재하는지 확인하는 엔드포인트
+    
+    - user_id: 확인할 사용자의 ID
+    
+    Returns:
+    - exists: 오늘 날짜의 요약 존재 여부
+    - record_date: 요약 날짜 (존재하는 경우)
+    - summary: 요약 내용 (존재하는 경우)
+    """
+    # 사용자 ID 검증
+    _validate_user_id(user_id)
+    
+    # 오늘 날짜
+    today = date.today()
+    
+    # 오늘 날짜의 요약 조회
+    existing_summary = db.query(History).filter(
+        History.username == user_id,
+        History.record_date == today
+    ).first()
+    
+    if existing_summary:
+        return SummaryExistsResponse(
+            exists=True,
+            record_date=existing_summary.record_date,
+            summary=existing_summary.content
+        )
+    else:
+        return SummaryExistsResponse(
+            exists=False,
+            record_date=None,
+            summary=None
+        )
