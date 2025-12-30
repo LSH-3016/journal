@@ -9,3 +9,4 @@ class History(Base):
     content = Column(Text, nullable=False)
     record_date = Column(Date, nullable=False)
     tags = Column(ARRAY(Text), nullable=True)
+    file_url = Column(Text, nullable=True)

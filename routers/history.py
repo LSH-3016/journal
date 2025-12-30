@@ -25,6 +25,7 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
         # 기존 기록이 있으면 업데이트 (덮어쓰기)
         existing_history.content = history.content
         existing_history.tags = history.tags
+        existing_history.file_url = history.file_url
         db.commit()
         db.refresh(existing_history)
         return existing_history
@@ -34,7 +35,8 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
             username=history.username,
             content=history.content,
             record_date=history.record_date,
-            tags=history.tags
+            tags=history.tags,
+            file_url=history.file_url
         )
         db.add(db_history)
         db.commit()
@@ -102,6 +104,7 @@ def update_history(history_id: int, history: HistoryCreate, db: Session = Depend
     db_history.content = history.content
     db_history.record_date = history.record_date
     db_history.tags = history.tags
+    db_history.file_url = history.file_url
     
     db.commit()
     db.refresh(db_history)

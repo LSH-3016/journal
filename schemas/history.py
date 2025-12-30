@@ -7,6 +7,7 @@ class HistoryCreate(BaseModel):
     content: str
     record_date: date
     tags: Optional[List[str]] = None
+    file_url: Optional[str] = None
 
 class HistoryResponse(BaseModel):
     id: int
@@ -14,6 +15,7 @@ class HistoryResponse(BaseModel):
     content: str
     record_date: date
     tags: Optional[List[str]] = None
+    file_url: Optional[str] = None
     
     class Config:
         from_attributes = True
