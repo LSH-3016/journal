@@ -81,6 +81,43 @@ def get_history(
     history_records = query.order_by(History.record_date.desc()).offset(offset).limit(limit).all()
     return history_records
 
+@router.get("/check-s3-by-date", response_model=dict)
+def check_s3_key_by_date(
+    user_id: str,
+    record_date: str,
+    db: Session = Depends(get_db)
+):
+    """
+    user_id와 record_date로 기록을 찾아 s3_key가 null인지 확인하는 엔드포인트
+    record_date 형식: YYYY-MM-DD (예: 2025-12-31)
+    """
+    from datetime import datetime
+    
+    try:
+        parsed_date = datetime.strptime(record_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식을 사용하세요.")
+    
+    history = db.query(History).filter(
+        History.user_id == user_id,
+        History.record_date == parsed_date
+    ).first()
+    
+    if not history:
+        return {
+            "found": False,
+            "history_id": None,
+            "has_s3_key": False,
+            "s3_key": None
+        }
+    
+    return {
+        "found": True,
+        "history_id": history.id,
+        "has_s3_key": history.s3_key is not None,
+        "s3_key": history.s3_key
+    }
+
 @router.get("/{history_id}", response_model=HistoryResponse)
 def get_history_by_id(history_id: int, db: Session = Depends(get_db)):
     """
@@ -121,35 +158,6 @@ def check_s3_key(history_id: int, db: Session = Depends(get_db)):
     
     return {
         "history_id": history_id,
-        "has_s3_key": history.s3_key is not None,
-        "s3_key": history.s3_key
-    }
-
-@router.get("/check-s3-by-date", response_model=dict)
-def check_s3_key_by_date(
-    user_id: str,
-    record_date: date,
-    db: Session = Depends(get_db)
-):
-    """
-    user_id와 record_date로 기록을 찾아 s3_key가 null인지 확인하는 엔드포인트
-    """
-    history = db.query(History).filter(
-        History.user_id == user_id,
-        History.record_date == record_date
-    ).first()
-    
-    if not history:
-        return {
-            "found": False,
-            "history_id": None,
-            "has_s3_key": False,
-            "s3_key": None
-        }
-    
-    return {
-        "found": True,
-        "history_id": history.id,
         "has_s3_key": history.s3_key is not None,
         "s3_key": history.s3_key
     }
