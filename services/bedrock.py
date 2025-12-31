@@ -57,7 +57,7 @@ class BedrockService:
         # Bedrock 요청 페이로드 구성
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1000,
+            "max_tokens": 2000,
             "system": system_prompt,
             "messages": [{
                 "role": "user",
