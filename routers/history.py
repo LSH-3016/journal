@@ -110,6 +110,50 @@ def update_history(history_id: int, history: HistoryCreate, db: Session = Depend
     db.refresh(db_history)
     return db_history
 
+@router.get("/{history_id}/check-s3", response_model=dict)
+def check_s3_key(history_id: int, db: Session = Depends(get_db)):
+    """
+    특정 기록의 s3_key가 null인지 확인하는 엔드포인트
+    """
+    history = db.query(History).filter(History.id == history_id).first()
+    if not history:
+        raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
+    
+    return {
+        "history_id": history_id,
+        "has_s3_key": history.s3_key is not None,
+        "s3_key": history.s3_key
+    }
+
+@router.get("/check-s3-by-date", response_model=dict)
+def check_s3_key_by_date(
+    user_id: str,
+    record_date: date,
+    db: Session = Depends(get_db)
+):
+    """
+    user_id와 record_date로 기록을 찾아 s3_key가 null인지 확인하는 엔드포인트
+    """
+    history = db.query(History).filter(
+        History.user_id == user_id,
+        History.record_date == record_date
+    ).first()
+    
+    if not history:
+        return {
+            "found": False,
+            "history_id": None,
+            "has_s3_key": False,
+            "s3_key": None
+        }
+    
+    return {
+        "found": True,
+        "history_id": history.id,
+        "has_s3_key": history.s3_key is not None,
+        "s3_key": history.s3_key
+    }
+
 @router.delete("/{history_id}")
 def delete_history(history_id: int, db: Session = Depends(get_db)):
     """
