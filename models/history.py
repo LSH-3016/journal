@@ -5,8 +5,8 @@ class History(Base):
     __tablename__ = "history"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    username = Column(String(255), index=True, nullable=False)
+    user_id = Column(String(255), index=True, nullable=False)
     content = Column(Text, nullable=False)
     record_date = Column(Date, nullable=False)
     tags = Column(ARRAY(Text), nullable=True)
-    file_url = Column(Text, nullable=True)
+    s3_key = Column(Text, nullable=True)  # 문자열로 변경

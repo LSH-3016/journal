@@ -17,7 +17,7 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
     """
     # 같은 날짜, 같은 사용자의 기록이 있는지 확인
     existing_history = db.query(History).filter(
-        History.username == history.username,
+        History.user_id == history.user_id,
         History.record_date == history.record_date
     ).first()
     
@@ -25,18 +25,18 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
         # 기존 기록이 있으면 업데이트 (덮어쓰기)
         existing_history.content = history.content
         existing_history.tags = history.tags
-        existing_history.file_url = history.file_url
+        existing_history.s3_key = history.s3_key
         db.commit()
         db.refresh(existing_history)
         return existing_history
     else:
         # 기존 기록이 없으면 새로 생성
         db_history = History(
-            username=history.username,
+            user_id=history.user_id,
             content=history.content,
             record_date=history.record_date,
             tags=history.tags,
-            file_url=history.file_url
+            s3_key=history.s3_key
         )
         db.add(db_history)
         db.commit()
@@ -45,7 +45,7 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=List[HistoryResponse])
 def get_history(
-    username: Optional[str] = None,
+    user_id: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     tags: Optional[str] = None,
@@ -56,7 +56,7 @@ def get_history(
     """
     기록을 조회하는 엔드포인트
     
-    - username: 특정 사용자의 기록만 조회 (선택사항)
+    - user_id: 특정 사용자의 기록만 조회 (선택사항)
     - start_date: 시작 날짜 (선택사항)
     - end_date: 종료 날짜 (선택사항)
     - tags: 태그로 필터링 (쉼표로 구분, 예: "개발,학습")
@@ -65,8 +65,8 @@ def get_history(
     """
     query = db.query(History)
     
-    if username:
-        query = query.filter(History.username == username)
+    if user_id:
+        query = query.filter(History.user_id == user_id)
     
     if start_date:
         query = query.filter(History.record_date >= start_date)
@@ -100,11 +100,11 @@ def update_history(history_id: int, history: HistoryCreate, db: Session = Depend
     if not db_history:
         raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
     
-    db_history.username = history.username
+    db_history.user_id = history.user_id
     db_history.content = history.content
     db_history.record_date = history.record_date
     db_history.tags = history.tags
-    db_history.file_url = history.file_url
+    db_history.s3_key = history.s3_key
     
     db.commit()
     db.refresh(db_history)

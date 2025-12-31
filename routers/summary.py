@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
+from typing import Optional, List
 import re
 
 from database import get_db
@@ -20,23 +21,49 @@ def _validate_user_id(user_id: str) -> None:
     if not re.match(r'^[a-zA-Z0-9_]+$', user_id):
         raise HTTPException(status_code=400, detail="유효하지 않은 사용자 ID 형식입니다")
 
-async def _get_user_messages_summary(user_id: str, db: Session) -> SummaryResponse:
+async def _get_user_messages_summary(
+    user_id: str, 
+    target_date: Optional[date], 
+    s3_key: Optional[str],
+    db: Session
+) -> SummaryResponse:
     """공통 요약 로직"""
     # 사용자 ID 검증
     _validate_user_id(user_id)
     
-    # 빈 content 필터링과 함께 필요한 컬럼만 조회
-    contents = db.query(Message.content).filter(
+    # 날짜가 지정되지 않으면 오늘 날짜 사용
+    if target_date is None:
+        kst = timezone(timedelta(hours=9))
+        target_date = datetime.now(kst).date()
+    
+    # 모든 메시지를 가져온 후 날짜 필터링
+    all_messages = db.query(Message).filter(
         Message.user_id == user_id,
         Message.content.isnot(None),
         Message.content != ""
-    ).order_by(Message.created_at.asc()).limit(1000).all()  # 최대 1000개 제한
+    ).order_by(Message.created_at.asc()).limit(1000).all()
     
-    if not contents:
+    # 한국 시간대로 날짜 필터링
+    kst = timezone(timedelta(hours=9))
+    filtered_messages = []
+    
+    for msg in all_messages:
+        # timezone-aware로 변환
+        if msg.created_at.tzinfo is None:
+            msg_dt = msg.created_at.replace(tzinfo=timezone.utc)
+        else:
+            msg_dt = msg.created_at
+        
+        # 한국 시간으로 변환하여 날짜 비교
+        msg_date_kst = msg_dt.astimezone(kst).date()
+        if msg_date_kst == target_date:
+            filtered_messages.append(msg)
+    
+    if not filtered_messages:
         raise HTTPException(status_code=404, detail="요약할 메시지가 없습니다")
     
     # 빈 문자열 제거 및 더 자연스러운 구분자 사용
-    content_list = [content[0].strip() for content in contents if content[0] and content[0].strip()]
+    content_list = [msg.content.strip() for msg in filtered_messages if msg.content and msg.content.strip()]
     
     if not content_list:
         raise HTTPException(status_code=404, detail="유효한 메시지 내용이 없습니다")
@@ -48,9 +75,33 @@ async def _get_user_messages_summary(user_id: str, db: Session) -> SummaryRespon
         # Bedrock을 사용하여 요약 생성
         summary = await bedrock_service.summarize_content(combined_content)
         
+        # History에 요약 저장 (같은 날짜가 있으면 업데이트)
+        existing_history = db.query(History).filter(
+            History.user_id == user_id,
+            History.record_date == target_date
+        ).first()
+        
+        if existing_history:
+            # 기존 기록 업데이트
+            existing_history.content = summary
+            if s3_key:
+                existing_history.s3_key = s3_key
+        else:
+            # 새 기록 생성
+            new_history = History(
+                user_id=user_id,
+                content=summary,
+                record_date=target_date,
+                s3_key=s3_key
+            )
+            db.add(new_history)
+        
+        db.commit()
+        
         return SummaryResponse(
             summary=summary,
-            message_count=len(content_list)
+            message_count=len(content_list),
+            s3_key=s3_key
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -67,20 +118,32 @@ async def create_summary(
     사용자의 메시지들을 AI로 요약하는 엔드포인트 (POST 방식)
     
     - user_id: 요약할 사용자의 ID
+    - s3_key: 업로드된 파일의 S3 키 (선택사항)
     """
-    return await _get_user_messages_summary(request.user_id, db)
+    return await _get_user_messages_summary(request.user_id, None, request.s3_key, db)
 
 @router.get("/{user_id}", response_model=SummaryResponse)
 async def get_summary(
     user_id: str,
+    date: Optional[str] = Query(None, description="요약할 날짜 (YYYY-MM-DD 형식, 기본값: 오늘)"),
+    s3_key: Optional[str] = Query(None, description="업로드된 파일의 S3 키"),
     db: Session = Depends(get_db)
 ):
     """
     사용자의 메시지들을 AI로 요약하는 엔드포인트 (GET 방식)
     
     - user_id: 요약할 사용자의 ID
+    - date: 요약할 날짜 (선택사항, 기본값: 오늘)
+    - s3_key: 업로드된 파일의 S3 키 (선택사항)
     """
-    return await _get_user_messages_summary(user_id, db)
+    target_date = None
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="날짜 형식이 올바르지 않습니다 (YYYY-MM-DD)")
+    
+    return await _get_user_messages_summary(user_id, target_date, s3_key, db)
 
 @router.get("/check/{user_id}", response_model=SummaryExistsResponse)
 async def check_today_summary_exists(
@@ -105,7 +168,7 @@ async def check_today_summary_exists(
     
     # 오늘 날짜의 요약 조회
     existing_summary = db.query(History).filter(
-        History.username == user_id,
+        History.user_id == user_id,
         History.record_date == today
     ).first()
     
@@ -113,11 +176,13 @@ async def check_today_summary_exists(
         return SummaryExistsResponse(
             exists=True,
             record_date=existing_summary.record_date,
-            summary=existing_summary.content
+            summary=existing_summary.content,
+            s3_key=existing_summary.s3_key
         )
     else:
         return SummaryExistsResponse(
             exists=False,
             record_date=None,
-            summary=None
+            summary=None,
+            s3_key=None
         )
