@@ -3,6 +3,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # .env 파일 로드
 load_dotenv()
@@ -36,8 +39,8 @@ try:
     with engine.connect() as conn:
         pass
 except Exception as e:
-    print(f"데이터베이스 연결 실패: {e}")
-    print("환경변수 설정을 확인해주세요.")
+    logger.error(f"데이터베이스 연결 실패: {e}")
+    logger.error("환경변수 설정을 확인해주세요.")
     raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

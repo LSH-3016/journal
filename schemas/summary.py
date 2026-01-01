@@ -13,6 +13,7 @@ class SummaryResponse(BaseModel):
 
 class SummaryExistsResponse(BaseModel):
     exists: bool
+    id: int | None = None  # 히스토리 ID 추가
     record_date: date | None = None
     summary: str | None = None
-    s3_key: str | None = None  # 문자열로 변경
+    s3_key: str | None = None

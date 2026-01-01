@@ -21,7 +21,7 @@ class BedrockService:
             aws_access_key_id=aws_access_key,
             aws_secret_access_key=aws_secret_key
         )
-        self.model_id = os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-20240307-v1:0')
+        self.model_id = os.getenv('BEDROCK_MODEL_ID', 'arn:aws:bedrock:us-east-1:324547056370:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0')
     
     async def summarize_content(self, content: str) -> str:
         """
@@ -89,13 +89,13 @@ class BedrockService:
             return summary
             
         except json.JSONDecodeError as e:
-            print(f"Bedrock API 응답 파싱 실패: {e}")
+            logger.error(f"Bedrock API 응답 파싱 실패: {e}")
             raise Exception("AI 응답을 처리하는 중 오류가 발생했습니다")
         except KeyError as e:
-            print(f"Bedrock API 응답 구조 오류: {e}")
+            logger.error(f"Bedrock API 응답 구조 오류: {e}")
             raise Exception("AI 응답 형식이 예상과 다릅니다")
         except Exception as e:
-            print(f"Bedrock API 호출 실패: {e}")
+            logger.error(f"Bedrock API 호출 실패: {e}")
             # AWS 관련 오류인지 확인
             if "credentials" in str(e).lower():
                 raise Exception("AWS 자격증명 오류입니다. 설정을 확인해주세요")

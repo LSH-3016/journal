@@ -106,7 +106,7 @@ async def _get_user_messages_summary(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"Bedrock 요약 생성 중 오류 발생: {e}")
+        logger.error(f"Bedrock 요약 생성 중 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"AI 요약 생성 실패: {str(e)}")
 
 @router.post("", response_model=SummaryResponse)
@@ -175,6 +175,7 @@ async def check_today_summary_exists(
     if existing_summary:
         return SummaryExistsResponse(
             exists=True,
+            id=existing_summary.id,  # ID 추가
             record_date=existing_summary.record_date,
             summary=existing_summary.content,
             s3_key=existing_summary.s3_key
@@ -182,6 +183,7 @@ async def check_today_summary_exists(
     else:
         return SummaryExistsResponse(
             exists=False,
+            id=None,
             record_date=None,
             summary=None,
             s3_key=None

@@ -2,10 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
+import logging
 
 from database import get_db
 from models.history import History
 from schemas.history import HistoryCreate, HistoryResponse
+from services.s3 import s3_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/history", tags=["history"])
 
@@ -14,6 +18,7 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
     """
     새로운 기록을 저장하는 엔드포인트
     같은 날짜에 같은 사용자의 기록이 이미 있으면 덮어씁니다.
+    DB와 S3에 동시에 저장됩니다.
     """
     # 같은 날짜, 같은 사용자의 기록이 있는지 확인
     existing_history = db.query(History).filter(
@@ -21,11 +26,24 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
         History.record_date == history.record_date
     ).first()
     
+    # S3에 저장
+    try:
+        text_url = s3_service.save_history_to_s3(
+            user_id=history.user_id,
+            content=history.content,
+            record_date=history.record_date,
+            tags=history.tags
+        )
+    except Exception as e:
+        logger.error(f"S3 저장 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"S3 저장 중 오류가 발생했습니다: {str(e)}")
+    
     if existing_history:
         # 기존 기록이 있으면 업데이트 (덮어쓰기)
         existing_history.content = history.content
         existing_history.tags = history.tags
-        existing_history.s3_key = history.s3_key
+        existing_history.s3_key = history.s3_key  # 이미지 주소
+        existing_history.text_url = text_url  # 텍스트 파일 URL
         db.commit()
         db.refresh(existing_history)
         return existing_history
@@ -36,7 +54,8 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
             content=history.content,
             record_date=history.record_date,
             tags=history.tags,
-            s3_key=history.s3_key
+            s3_key=history.s3_key,  # 이미지 주소
+            text_url=text_url  # 텍스트 파일 URL
         )
         db.add(db_history)
         db.commit()
@@ -132,16 +151,31 @@ def get_history_by_id(history_id: int, db: Session = Depends(get_db)):
 def update_history(history_id: int, history: HistoryCreate, db: Session = Depends(get_db)):
     """
     기록을 수정하는 엔드포인트
+    DB와 S3 파일을 모두 업데이트합니다.
     """
     db_history = db.query(History).filter(History.id == history_id).first()
     if not db_history:
         raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
     
+    # S3에 저장 (덮어쓰기)
+    try:
+        text_url = s3_service.save_history_to_s3(
+            user_id=history.user_id,
+            content=history.content,
+            record_date=history.record_date,
+            tags=history.tags
+        )
+    except Exception as e:
+        logger.error(f"S3 저장 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"S3 저장 중 오류가 발생했습니다: {str(e)}")
+    
+    # DB 업데이트
     db_history.user_id = history.user_id
     db_history.content = history.content
     db_history.record_date = history.record_date
     db_history.tags = history.tags
-    db_history.s3_key = history.s3_key
+    db_history.s3_key = history.s3_key  # 이미지 주소
+    db_history.text_url = text_url  # 텍스트 파일 URL
     
     db.commit()
     db.refresh(db_history)
@@ -162,15 +196,43 @@ def check_s3_key(history_id: int, db: Session = Depends(get_db)):
         "s3_key": history.s3_key
     }
 
+@router.get("/{history_id}/s3-content")
+def get_history_s3_content(history_id: int, db: Session = Depends(get_db)):
+    """
+    S3에서 히스토리 파일 내용을 읽어오는 엔드포인트
+    """
+    history = db.query(History).filter(History.id == history_id).first()
+    if not history:
+        raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
+    
+    if not history.s3_key:
+        raise HTTPException(status_code=404, detail="S3 파일이 없습니다")
+    
+    try:
+        content = s3_service.get_history_from_s3(history.s3_key)
+        return {"s3_key": history.s3_key, "content": content}
+    except Exception as e:
+        logger.error(f"S3 읽기 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"S3에서 파일을 읽는 중 오류가 발생했습니다: {str(e)}")
+
 @router.delete("/{history_id}")
 def delete_history(history_id: int, db: Session = Depends(get_db)):
     """
     기록을 삭제하는 엔드포인트
+    DB와 S3 파일을 모두 삭제합니다.
     """
     db_history = db.query(History).filter(History.id == history_id).first()
     if not db_history:
         raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
     
+    # S3 파일 삭제 (있는 경우)
+    if db_history.s3_key:
+        try:
+            s3_service.delete_history_from_s3(db_history.s3_key)
+        except Exception as e:
+            logger.warning(f"S3 파일 삭제 실패 (계속 진행): {e}")
+    
+    # DB에서 삭제
     db.delete(db_history)
     db.commit()
     return {"message": "기록이 삭제되었습니다"}

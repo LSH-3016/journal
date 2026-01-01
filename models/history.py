@@ -9,4 +9,5 @@ class History(Base):
     content = Column(Text, nullable=False)
     record_date = Column(Date, nullable=False)
     tags = Column(ARRAY(Text), nullable=True)
-    s3_key = Column(Text, nullable=True)  # 문자열로 변경
+    s3_key = Column(Text, nullable=True)  # 이미지 주소
+    text_url = Column(Text, nullable=True)  # 텍스트 파일 주소
