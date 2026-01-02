@@ -1,4 +1,4 @@
-d# Journal API
+# Journal API
 
 AI 기반 일기 및 메시지 관리 시스템입니다. FastAPI와 AWS Bedrock을 활용하여 지능형 텍스트 분류, 자동 요약, S3 저장 기능을 제공합니다.
 
