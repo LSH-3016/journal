@@ -62,6 +62,119 @@ def create_history(history: HistoryCreate, db: Session = Depends(get_db)):
         db.refresh(db_history)
         return db_history
 
+@router.get("/search", response_model=List[HistoryResponse])
+def search_history(
+    user_id: str,
+    q: str,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    키워드로 기록을 검색하는 엔드포인트
+    content 필드에서 키워드를 검색합니다.
+    
+    - user_id: 사용자 ID (필수)
+    - q: 검색 키워드 (필수)
+    - limit: 가져올 기록 수 (기본값: 100)
+    - offset: 건너뛸 기록 수 (페이지네이션용, 기본값: 0)
+    """
+    query = db.query(History).filter(
+        History.user_id == user_id,
+        History.content.ilike(f"%{q}%")
+    )
+    
+    history_records = query.order_by(History.record_date.desc()).offset(offset).limit(limit).all()
+    return history_records
+
+@router.get("/tags", response_model=List[HistoryResponse])
+def search_by_tags(
+    user_id: str,
+    tags: str,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    태그로 기록을 검색하는 엔드포인트
+    
+    - user_id: 사용자 ID (필수)
+    - tags: 태그 (쉼표로 구분, 예: "개발,학습") (필수)
+    - limit: 가져올 기록 수 (기본값: 100)
+    - offset: 건너뛸 기록 수 (페이지네이션용, 기본값: 0)
+    """
+    tag_list = [tag.strip() for tag in tags.split(",")]
+    
+    query = db.query(History).filter(
+        History.user_id == user_id,
+        History.tags.overlap(tag_list)
+    )
+    
+    history_records = query.order_by(History.record_date.desc()).offset(offset).limit(limit).all()
+    return history_records
+
+@router.get("/date-range", response_model=List[HistoryResponse])
+def get_by_date_range(
+    user_id: str,
+    start_date: date,
+    end_date: date,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    날짜 범위로 기록을 조회하는 엔드포인트
+    
+    - user_id: 사용자 ID (필수)
+    - start_date: 시작 날짜 (YYYY-MM-DD) (필수)
+    - end_date: 종료 날짜 (YYYY-MM-DD) (필수)
+    - limit: 가져올 기록 수 (기본값: 100)
+    - offset: 건너뛸 기록 수 (페이지네이션용, 기본값: 0)
+    """
+    query = db.query(History).filter(
+        History.user_id == user_id,
+        History.record_date >= start_date,
+        History.record_date <= end_date
+    )
+    
+    history_records = query.order_by(History.record_date.desc()).offset(offset).limit(limit).all()
+    return history_records
+
+@router.get("/tags/list", response_model=dict)
+def get_all_tags(
+    user_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    사용자의 모든 태그 목록을 반환하는 엔드포인트
+    
+    - user_id: 사용자 ID (필수)
+    
+    Returns:
+        {
+            "user_id": "xxx",
+            "tags": ["태그1", "태그2", ...],
+            "count": 태그 개수
+        }
+    """
+    # 사용자의 모든 히스토리 조회
+    histories = db.query(History).filter(History.user_id == user_id).all()
+    
+    # 모든 태그 수집 (중복 제거)
+    all_tags = set()
+    for history in histories:
+        if history.tags:
+            all_tags.update(history.tags)
+    
+    # 정렬된 리스트로 변환
+    sorted_tags = sorted(list(all_tags))
+    
+    return {
+        "user_id": user_id,
+        "tags": sorted_tags,
+        "count": len(sorted_tags)
+    }
+
 @router.get("", response_model=List[HistoryResponse])
 def get_history(
     user_id: Optional[str] = None,
@@ -225,12 +338,25 @@ def delete_history(history_id: int, db: Session = Depends(get_db)):
     if not db_history:
         raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
     
-    # S3 파일 삭제 (있는 경우)
+    # S3 파일 삭제 (text_url이 있는 경우)
+    if db_history.text_url:
+        try:
+            s3_key = s3_service.extract_s3_key_from_url(db_history.text_url)
+            if s3_key:
+                s3_service.delete_history_from_s3(s3_key)
+                logger.info(f"S3 텍스트 파일 삭제 완료: {s3_key}")
+        except Exception as e:
+            logger.warning(f"S3 텍스트 파일 삭제 실패 (계속 진행): {e}")
+    
+    # S3 이미지 파일 삭제 (s3_key가 있는 경우)
     if db_history.s3_key:
         try:
-            s3_service.delete_history_from_s3(db_history.s3_key)
+            s3_key = s3_service.extract_s3_key_from_url(db_history.s3_key)
+            if s3_key:
+                s3_service.delete_history_from_s3(s3_key)
+                logger.info(f"S3 이미지 파일 삭제 완료: {s3_key}")
         except Exception as e:
-            logger.warning(f"S3 파일 삭제 실패 (계속 진행): {e}")
+            logger.warning(f"S3 이미지 파일 삭제 실패 (계속 진행): {e}")
     
     # DB에서 삭제
     db.delete(db_history)

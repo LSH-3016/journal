@@ -1,6 +1,7 @@
 import boto3
 import json
 import os
+from datetime import date
 from typing import Dict, Any
 from dotenv import load_dotenv
 import logging
@@ -30,12 +31,13 @@ class BedrockFlowService:
         if not self.flow_arn:
             raise ValueError("BEDROCK_FLOW_ARN 환경변수가 설정되지 않았습니다.")
     
-    def invoke_flow(self, user_input: str) -> Dict[str, Any]:
+    def invoke_flow(self, user_input: str, current_date: date = None) -> Dict[str, Any]:
         """
         Bedrock Flow를 호출하여 입력이 질문인지 데이터인지 판단합니다.
         
         Args:
             user_input: 사용자 입력 텍스트
+            current_date: 현재 날짜 (기본값: 오늘 날짜)
             
         Returns:
             Dict: Flow 응답 결과
@@ -46,11 +48,20 @@ class BedrockFlowService:
             }
         """
         try:
+            # 현재 날짜 설정
+            if current_date is None:
+                current_date = date.today()
+            
+            current_date_str = current_date.strftime("%Y-%m-%d")
+            
+            # user_input과 current_date를 하나의 document로 합침
+            combined_input = f"current_date: {current_date_str}\n\n{user_input}"
+            
             # Flow 입력 구성
             inputs = [
                 {
                     'content': {
-                        'document': user_input
+                        'document': combined_input
                     },
                     'nodeName': 'FlowInputNode',
                     'nodeOutputName': 'document'

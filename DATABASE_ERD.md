@@ -175,6 +175,13 @@ S3 저장 경로:
 - 히스토리 생성 시 같은 날짜가 있으면 덮어쓰기
 - S3 파일과 DB 레코드는 동기화되어야 함
 - 태그는 배열 형태로 저장되며 중복 허용
+- 히스토리 삭제 시 DB 레코드와 함께 S3 파일(text_url, s3_key) 자동 삭제
+
+### 6.3 검색 기능
+- **키워드 검색**: content 필드에서 ILIKE를 사용한 대소문자 구분 없는 검색
+- **태그 검색**: PostgreSQL 배열 overlap 연산자를 사용한 태그 필터링
+- **날짜 범위 검색**: record_date 기준 범위 조회
+- **태그 목록**: 사용자의 모든 히스토리에서 고유 태그 추출 및 정렬
 
 ---
 
@@ -184,6 +191,7 @@ S3 저장 경로:
 - 사용자별 데이터 조회 시 user_id 인덱스 활용
 - 날짜 범위 조회 시 날짜 인덱스 활용
 - 태그 검색 시 GIN 인덱스 활용
+- 키워드 검색 시 content 필드의 ILIKE 연산 (필요시 Full-Text Search 인덱스 추가 고려)
 
 ### 7.2 파티셔닝 고려사항
 대용량 데이터 처리 시 고려할 파티셔닝 전략:
@@ -262,9 +270,17 @@ psql -h localhost -U username -d journal_db < messages_backup.sql
 
 ---
 
-## 10. API 응답 스키마 업데이트
+## 10. API 엔드포인트 요약
 
-### 10.1 SummaryExistsResponse 스키마 변경
+### 10.1 History API 검색 엔드포인트
+```
+GET /history/search          - 키워드로 검색 (content 필드)
+GET /history/tags            - 태그로 검색
+GET /history/date-range      - 날짜 범위로 조회
+GET /history/tags/list       - 모든 태그 목록 조회
+```
+
+### 10.2 SummaryExistsResponse 스키마 변경
 ```python
 class SummaryExistsResponse(BaseModel):
     exists: bool
@@ -274,7 +290,7 @@ class SummaryExistsResponse(BaseModel):
     s3_key: str | None = None
 ```
 
-### 10.2 업데이트된 API 응답 예시
+### 10.3 업데이트된 API 응답 예시
 **GET /summary/check/{user_id} 응답:**
 ```json
 {
@@ -286,9 +302,27 @@ class SummaryExistsResponse(BaseModel):
 }
 ```
 
-### 10.3 변경 이유
+### 10.4 변경 이유
 - 프론트엔드에서 히스토리 ID가 필요했지만 기존 응답에는 포함되지 않음
 - `{ exists: true, id: "123" }` 형태의 응답을 기대했으나 실제로는 다른 구조였음
 - 호환성을 위해 기존 필드는 유지하고 `id` 필드만 추가
 
 이 변경으로 프론트엔드에서 히스토리 ID를 직접 받아 사용할 수 있게 되었습니다.
+
+---
+
+## 11. Flow API 업데이트
+
+### 11.1 current_date 전송
+Bedrock Flow 호출 시 현재 날짜를 함께 전송합니다:
+```
+current_date: 2026-01-02
+
+{user_input}
+```
+
+이를 통해 Flow에서 날짜 기반 처리 및 질문 응답이 가능합니다.
+
+### 11.2 데이터 분류 응답 변경
+- **데이터로 판단된 경우**: 메시지만 저장하고 `content`는 빈 문자열로 반환
+- **질문으로 판단된 경우**: 답변을 `content`에 담아 반환 (저장하지 않음)

@@ -116,6 +116,31 @@ class S3Service:
             return True
         except ClientError:
             return False
+    
+    def extract_s3_key_from_url(self, s3_url: str) -> str:
+        """
+        S3 URL에서 키를 추출합니다.
+        
+        Args:
+            s3_url: S3 URL (예: https://bucket.s3.region.amazonaws.com/key)
+            
+        Returns:
+            str: S3 키
+        """
+        # URL에서 키 부분만 추출
+        # 형식: https://{bucket}.s3.{region}.amazonaws.com/{key}
+        if not s3_url:
+            return ""
+        
+        try:
+            # URL을 '/'로 분할하여 키 부분 추출
+            parts = s3_url.split('.amazonaws.com/')
+            if len(parts) > 1:
+                return parts[1]
+            return ""
+        except Exception as e:
+            logger.error(f"S3 URL 파싱 실패: {e}")
+            return ""
 
 # 싱글톤 인스턴스
 s3_service = S3Service()

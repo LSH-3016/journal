@@ -117,7 +117,56 @@ Content-Type: application/json
 GET /history?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&tags=운동,회의&limit=100&offset=0
 ```
 
-### 2.3 날짜별 S3 키 확인
+### 2.3 키워드 검색
+```http
+GET /history/search?user_id=user_001&q=운동&limit=100&offset=0
+```
+
+**응답:**
+```json
+[
+  {
+    "id": 1,
+    "user_id": "user_001",
+    "content": "오늘은 일찍 일어나서 운동을 했다...",
+    "record_date": "2026-01-01",
+    "tags": ["운동", "회의"],
+    "s3_key": "https://example.com/image.jpg",
+    "text_url": "https://bucket.s3.amazonaws.com/user_001/history/2026/01/2026-01-01.txt"
+  }
+]
+```
+
+### 2.4 태그로 검색
+```http
+GET /history/tags?user_id=user_001&tags=운동,회의&limit=100&offset=0
+```
+
+### 2.5 날짜 범위로 조회
+```http
+GET /history/date-range?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&limit=100&offset=0
+```
+
+### 2.6 모든 태그 목록 조회
+```http
+GET /history/tags/list?user_id=user_001
+```
+
+**응답:**
+```json
+{
+  "user_id": "user_001",
+  "tags": ["개발", "운동", "회의", "학습"],
+  "count": 4
+}
+```
+
+### 2.7 날짜별 S3 키 확인
+```http
+GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
+```
+
+### 2.7 날짜별 S3 키 확인
 ```http
 GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
 ```
@@ -132,30 +181,32 @@ GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
 }
 ```
 
-### 2.4 특정 히스토리 조회
+### 2.8 특정 히스토리 조회
 ```http
 GET /history/{history_id}
 ```
 
-### 2.5 히스토리 수정
+### 2.9 히스토리 수정
 ```http
 PUT /history/{history_id}
 ```
 
-### 2.6 S3 키 확인
+### 2.10 S3 키 확인
 ```http
 GET /history/{history_id}/check-s3
 ```
 
-### 2.7 S3 텍스트 내용 조회
+### 2.11 S3 텍스트 내용 조회
 ```http
 GET /history/{history_id}/s3-content
 ```
 
-### 2.8 히스토리 삭제
+### 2.12 히스토리 삭제
 ```http
 DELETE /history/{history_id}
 ```
+
+**참고:** 히스토리 삭제 시 DB 레코드와 함께 S3의 텍스트 파일(text_url)과 이미지 파일(s3_key)도 자동으로 삭제됩니다.
 
 ---
 
@@ -179,11 +230,13 @@ Content-Type: application/json
 ```json
 {
   "type": "data",
-  "content": "7시에 기상했다",
+  "content": "",
   "message": "메시지가 저장되었습니다.",
   "history_id": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
+
+**참고:** 데이터로 판단된 경우 메시지만 저장하고 content는 빈 문자열로 반환됩니다.
 
 **질문인 경우 응답:**
 ```json
@@ -310,14 +363,16 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### 7.1 데이터 분류
 - **Flow API**: Bedrock Flow를 통해 입력을 자동으로 "데이터" 또는 "질문"으로 분류
-- **데이터**: 메시지 테이블에 저장
+- **데이터**: 메시지 테이블에 저장, content는 빈 문자열로 반환
 - **질문**: 저장하지 않고 답변만 반환
+- **current_date**: Flow 호출 시 현재 날짜를 함께 전송하여 날짜 기반 처리 지원
 
 ### 7.2 저장 방식
 - **메시지**: PostgreSQL DB만 저장
 - **히스토리**: PostgreSQL DB + S3 텍스트 파일 저장
 - **이미지**: S3 URL을 s3_key에 저장
 - **텍스트**: S3 텍스트 파일 URL을 text_url에 저장
+- **삭제**: 히스토리 삭제 시 DB와 S3 파일(text_url, s3_key) 모두 삭제
 
 ### 7.3 시간대 처리
 - 모든 날짜 필터링은 한국 시간(KST, UTC+9) 기준
@@ -327,3 +382,9 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - **요약**: Claude를 통한 메시지 자동 요약
 - **분류**: Bedrock Flow를 통한 지능형 입력 분류
 - **답변**: 질문에 대한 자동 응답 생성
+
+### 7.5 검색 기능
+- **키워드 검색**: content 필드에서 키워드 검색 (대소문자 구분 없음)
+- **태그 검색**: 하나 이상의 태그로 히스토리 필터링
+- **날짜 범위 검색**: 시작일과 종료일 사이의 히스토리 조회
+- **태그 목록**: 사용자의 모든 고유 태그 목록 조회

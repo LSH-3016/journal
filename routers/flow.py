@@ -41,7 +41,7 @@ def process_with_flow(request: FlowRequest, db: Session = Depends(get_db)):
         flow_result = flow_service.invoke_flow(request.content)
         
         if flow_result["node_name"] == "Data_return":
-            # 데이터인 경우: 메시지로 DB에만 저장
+            # 데이터인 경우: 메시지로 DB에만 저장 (답변 반환 안 함)
             logger.info("데이터로 판단됨 - 메시지 저장")
             
             # 메시지 테이블에 저장 (S3 저장 없음)
@@ -58,9 +58,9 @@ def process_with_flow(request: FlowRequest, db: Session = Depends(get_db)):
             
             return FlowResponse(
                 type="data",
-                content=flow_result["content"],
+                content="",  # 답변 반환하지 않음
                 message="메시지가 저장되었습니다.",
-                history_id=str(db_message.id)  # UUID를 문자열로 변환
+                history_id=str(db_message.id)
             )
         
         elif flow_result["node_name"] == "Answer_return":
