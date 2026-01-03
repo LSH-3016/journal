@@ -9,8 +9,9 @@ venv/
 # 환경 변수 파일
 .env
 
-# Kubernetes Secrets (민감 데이터)
-k8s-secrets.yaml
+# IAM Policy 파일 (임시)
+trust-policy.json
+secrets-policy.json
 
 # 로그 파일
 *.log

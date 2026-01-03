@@ -1,12 +1,25 @@
 # GitHub Actions 설정 가이드
 
-## 1. GitHub Secrets 설정
+## 1. GitHub Secrets 설정 (필수!)
 
 GitHub 리포지토리 Settings > Secrets and variables > Actions에서 다음 secrets를 추가하세요:
 
+### 단계별 설정:
+1. GitHub 리포지토리 페이지로 이동
+2. 상단 메뉴에서 **Settings** 클릭
+3. 왼쪽 사이드바에서 **Secrets and variables** > **Actions** 클릭
+4. **New repository secret** 버튼 클릭
+5. 다음 secrets를 하나씩 추가:
+
 ### 필수 Secrets:
-- `AWS_ACCESS_KEY_ID`: 실제 AWS Access Key ID
-- `AWS_SECRET_ACCESS_KEY`: 실제 AWS Secret Access Key
+
+**Name**: `AWS_ACCESS_KEY_ID`  
+**Secret**: (실제 AWS Access Key ID 입력)
+
+**Name**: `AWS_SECRET_ACCESS_KEY`  
+**Secret**: (실제 AWS Secret Access Key 입력)
+
+⚠️ **중요**: 이 secrets를 설정하지 않으면 GitHub Actions가 실행되지 않습니다!
 
 ## 2. Workflow 설명
 

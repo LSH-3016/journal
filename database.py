@@ -2,29 +2,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-# .env 파일 로드
+# .env 파일 로드 (로컬 개발용)
 load_dotenv()
 
+# config.py에서 설정 가져오기
+from config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+
 def get_database_url():
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_name = os.getenv("DB_NAME", "journal_db")
-    db_user = os.getenv("DB_USER")
-    db_password = os.getenv("DB_PASSWORD")
-    
     # 필수 환경변수 체크
-    if not all([db_user, db_password]):
+    if not all([DB_USER, DB_PASSWORD]):
         raise ValueError(
             "데이터베이스 인증 정보가 필요합니다. "
-            "DB_USER, DB_PASSWORD 환경변수를 설정해주세요."
+            "DB_USER, DB_PASSWORD 환경변수를 설정하거나 AWS Secrets Manager를 사용하세요."
         )
     
-    return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    return f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 DATABASE_URL = get_database_url()
 

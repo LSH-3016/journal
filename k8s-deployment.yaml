@@ -14,47 +14,13 @@ spec:
       labels:
         app: journal-api
     spec:
+      serviceAccountName: journal-api-sa
       containers:
       - name: journal-api
         image: 324547056370.dkr.ecr.us-east-1.amazonaws.com/fproject-dev-api:latest
         ports:
         - containerPort: 8000
         env:
-        - name: DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: db-host
-        - name: DB_PORT
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: db-port
-        - name: DB_NAME
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: db-name
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: db-user
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: db-password
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: aws-access-key-id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: aws-secret-access-key
         - name: AWS_REGION
           value: "us-east-1"
         - name: ALLOWED_ORIGINS
@@ -64,25 +30,9 @@ spec:
         - name: ENVIRONMENT
           value: "production"
         - name: S3_BUCKET_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: journal-config
-              key: s3-bucket-name
+          value: "knowledge-base-test-6575574"
         - name: BEDROCK_MODEL_ID
-          valueFrom:
-            configMapKeyRef:
-              name: journal-config
-              key: bedrock-model-id
-        - name: BEDROCK_FLOW_ARN
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: bedrock-flow-arn
-        - name: BEDROCK_FLOW_ALIAS
-          valueFrom:
-            secretKeyRef:
-              name: journal-secrets
-              key: bedrock-flow-alias
+          value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
         livenessProbe:
           httpGet:
             path: /health
@@ -117,25 +67,8 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
-kind: ConfigMap
+kind: ServiceAccount
 metadata:
-  name: journal-config
-data:
-  s3-bucket-name: "knowledge-base-test-6575574"
-  bedrock-model-id: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: journal-secrets
-type: Opaque
-stringData:
-  db-host: "REPLACE_WITH_ACTUAL_VALUE"
-  db-port: "5432"
-  db-name: "REPLACE_WITH_ACTUAL_VALUE"
-  db-user: "REPLACE_WITH_ACTUAL_VALUE"
-  db-password: "REPLACE_WITH_ACTUAL_VALUE"
-  aws-access-key-id: "REPLACE_WITH_ACTUAL_VALUE"
-  aws-secret-access-key: "REPLACE_WITH_ACTUAL_VALUE"
-  bedrock-flow-arn: "REPLACE_WITH_ACTUAL_VALUE"
-  bedrock-flow-alias: "REPLACE_WITH_ACTUAL_VALUE"
+  name: journal-api-sa
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::324547056370:role/journal-api-secrets-role
