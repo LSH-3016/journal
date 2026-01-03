@@ -2,26 +2,39 @@ import os
 import json
 import boto3
 from botocore.exceptions import ClientError
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_secret(secret_name, region_name="us-east-1"):
     """AWS Secrets Manager에서 시크릿 가져오기"""
     
     # 로컬 개발 환경에서는 환경변수 사용
-    if os.getenv("ENVIRONMENT") == "development":
+    env = os.getenv("ENVIRONMENT", "development")
+    logger.info(f"Environment: {env}")
+    
+    if env == "development":
+        logger.info("Development mode - using environment variables")
         return None
     
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
+    logger.info(f"Production mode - fetching secret: {secret_name}")
     
     try:
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+        
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
         secret = get_secret_value_response['SecretString']
+        logger.info(f"Successfully retrieved secret: {secret_name}")
         return json.loads(secret)
     except ClientError as e:
-        print(f"Error retrieving secret {secret_name}: {e}")
+        logger.error(f"Error retrieving secret {secret_name}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving secret {secret_name}: {e}")
         return None
 
 # Database 설정
@@ -32,6 +45,7 @@ if db_secret:
     DB_NAME = db_secret.get("dbname")
     DB_USER = db_secret.get("username")
     DB_PASSWORD = db_secret.get("password")
+    logger.info(f"Using database from Secrets Manager: {DB_HOST}")
 else:
     # 환경변수에서 가져오기 (로컬 개발용)
     DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -39,6 +53,7 @@ else:
     DB_NAME = os.getenv("DB_NAME", "journal_db")
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
+    logger.info(f"Using database from environment variables: {DB_HOST}")
 
 # AWS 자격 증명
 aws_secret = get_secret("journal-api/aws-credentials")
