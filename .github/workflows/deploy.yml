@@ -9,7 +9,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: fproject-dev-api
+  ECR_REPOSITORY: journal-api
   EKS_CLUSTER_NAME: fproject-dev-eks
 
 jobs:
@@ -50,12 +50,28 @@ jobs:
         version: 'v1.28.0'
 
     - name: Update kube config
-      run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+      run: |
+        aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+        
+    - name: Test EKS connection
+      run: |
+        kubectl version --client
+        kubectl cluster-info || echo "Cluster info failed, but continuing..."
+        
+    - name: Check current context
+      run: |
+        kubectl config current-context || echo "No context available"
+        kubectl auth can-i get pods --all-namespaces || echo "Limited permissions"
 
     - name: Deploy to EKS
       run: |
         # ConfigMap과 Service만 배포 (Secret은 수동으로 미리 배포되어 있어야 함)
-        kubectl apply -f k8s-deployment.yaml
+        kubectl apply -f k8s-deployment.yaml || {
+          echo "Deployment failed. Checking EKS access..."
+          aws sts get-caller-identity
+          aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION --query 'cluster.status'
+          exit 1
+        }
         kubectl rollout status deployment/journal-api
         kubectl get pods -l app=journal-api
         kubectl get svc journal-api-service
