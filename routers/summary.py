@@ -17,8 +17,8 @@ def _validate_user_id(user_id: str) -> None:
     if not user_id or not user_id.strip():
         raise HTTPException(status_code=400, detail="사용자 ID가 필요합니다")
     
-    # 기본적인 형식 검증 (영문, 숫자, 언더스코어만 허용)
-    if not re.match(r'^[a-zA-Z0-9_]+$', user_id):
+    # 기본적인 형식 검증 (영문, 숫자, 언더스코어, 하이픈 허용 - UUID 지원)
+    if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
         raise HTTPException(status_code=400, detail="유효하지 않은 사용자 ID 형식입니다")
 
 async def _get_user_messages_summary(
