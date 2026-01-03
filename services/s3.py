@@ -1,9 +1,11 @@
 import boto3
-import os
+import logging
 from datetime import date
 from typing import Optional
 from botocore.exceptions import ClientError
-import logging
+
+# config.py에서 설정 가져오기
+from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -11,14 +13,16 @@ class S3Service:
     def __init__(self):
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_REGION
         )
-        self.bucket_name = os.getenv('S3_BUCKET_NAME')
+        self.bucket_name = S3_BUCKET_NAME
         
         if not self.bucket_name:
-            raise ValueError("S3_BUCKET_NAME 환경변수가 설정되지 않았습니다.")
+            raise ValueError("S3_BUCKET_NAME이 설정되지 않았습니다.")
+        
+        logger.info(f"S3Service initialized with bucket: {self.bucket_name}")
     
     def generate_s3_key(self, user_id: str, record_date: date) -> str:
         """S3 키를 생성합니다. 형식: {user_id}/history/{YYYY}/{MM}/{YYYY-MM-DD}.txt"""
@@ -59,7 +63,7 @@ class S3Service:
             logger.info(f"S3에 히스토리 저장 완료: {s3_key}")
             
             # S3 URL 생성
-            text_url = f"https://{self.bucket_name}.s3.{os.getenv('AWS_REGION', 'us-east-1')}.amazonaws.com/{s3_key}"
+            text_url = f"https://{self.bucket_name}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
             return text_url
         except ClientError as e:
             logger.error(f"S3 저장 실패: {e}")

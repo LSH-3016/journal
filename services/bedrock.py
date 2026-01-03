@@ -1,27 +1,27 @@
 import boto3
 import json
-import os
+import logging
 from typing import Dict, Any
-from dotenv import load_dotenv
 
-load_dotenv()
+# config.py에서 설정 가져오기
+from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, BEDROCK_MODEL_ID
+
+logger = logging.getLogger(__name__)
 
 class BedrockService:
     def __init__(self):
         # AWS 자격증명 검증
-        aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-        aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-        
-        if not aws_access_key or not aws_secret_key:
-            raise ValueError("AWS 자격증명이 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+            raise ValueError("AWS 자격증명이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인해주세요.")
         
         self.client = boto3.client(
             'bedrock-runtime',
-            region_name=os.getenv('AWS_REGION', 'us-east-1'),
-            aws_access_key_id=aws_access_key,
-            aws_secret_access_key=aws_secret_key
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
         )
-        self.model_id = os.getenv('BEDROCK_MODEL_ID', 'arn:aws:bedrock:us-east-1:324547056370:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0')
+        self.model_id = BEDROCK_MODEL_ID
+        logger.info(f"BedrockService initialized with model: {self.model_id}")
     
     async def summarize_content(self, content: str) -> str:
         """

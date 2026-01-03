@@ -1,35 +1,34 @@
 import boto3
 import json
-import os
+import logging
 from datetime import date
 from typing import Dict, Any
-from dotenv import load_dotenv
-import logging
 
-load_dotenv()
+# config.py에서 설정 가져오기
+from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, BEDROCK_FLOW_ARN, BEDROCK_FLOW_ALIAS
+
 logger = logging.getLogger(__name__)
 
 class BedrockFlowService:
     def __init__(self):
         # AWS 자격증명 검증
-        aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-        aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-        
-        if not aws_access_key or not aws_secret_key:
-            raise ValueError("AWS 자격증명이 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+            raise ValueError("AWS 자격증명이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인해주세요.")
         
         self.client = boto3.client(
             'bedrock-agent-runtime',
-            region_name=os.getenv('AWS_REGION', 'us-east-1'),
-            aws_access_key_id=aws_access_key,
-            aws_secret_access_key=aws_secret_key
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
         )
         
-        self.flow_arn = os.getenv('BEDROCK_FLOW_ARN')
-        self.flow_alias = os.getenv('BEDROCK_FLOW_ALIAS', 'LIVE')
+        self.flow_arn = BEDROCK_FLOW_ARN
+        self.flow_alias = BEDROCK_FLOW_ALIAS or 'LIVE'
         
         if not self.flow_arn:
-            raise ValueError("BEDROCK_FLOW_ARN 환경변수가 설정되지 않았습니다.")
+            raise ValueError("BEDROCK_FLOW_ARN이 설정되지 않았습니다.")
+        
+        logger.info(f"BedrockFlowService initialized with flow: {self.flow_arn}")
     
     def invoke_flow(self, user_input: str, current_date: date = None) -> Dict[str, Any]:
         """
