@@ -82,11 +82,30 @@ jobs:
         }
         
         echo "Waiting for rollout..."
-        kubectl rollout status deployment/journal-api --timeout=5m
+        kubectl rollout status deployment/journal-api --timeout=3m || {
+          echo "Rollout failed. Checking pod status..."
+          kubectl get pods -l app=journal-api
+          kubectl describe pods -l app=journal-api
+          echo "Pod logs:"
+          kubectl logs -l app=journal-api --tail=100 || echo "No logs available"
+          exit 1
+        }
         
         echo "Deployment status:"
         kubectl get pods -l app=journal-api
         kubectl get svc journal-api-service
+
+    - name: Show deployment info on failure
+      if: failure()
+      run: |
+        echo "=== Deployment Status ==="
+        kubectl get deployment journal-api -o yaml
+        echo "=== Pod Status ==="
+        kubectl get pods -l app=journal-api -o wide
+        echo "=== Pod Events ==="
+        kubectl get events --sort-by=.metadata.creationTimestamp | grep journal-api
+        echo "=== Pod Logs ==="
+        kubectl logs -l app=journal-api --tail=200 --all-containers=true || echo "No logs available"
 
     - name: Verify deployment
       run: |
