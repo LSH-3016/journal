@@ -71,15 +71,14 @@ jobs:
         # 이미지 태그 업데이트
         sed -i "s|image:.*|image: ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
         
-        # ConfigMap과 Service 배포
-        kubectl apply -f k8s-deployment.yaml || {
-          echo "Deployment failed. Checking EKS access..."
-          aws sts get-caller-identity
-          aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION --query 'cluster.status'
-          kubectl auth can-i create deployments --all-namespaces || echo "Cannot create deployments"
-          kubectl auth can-i get deployments --all-namespaces || echo "Cannot get deployments"
-          exit 1
-        }
+        # Deployment, Service, ServiceAccount 배포
+        kubectl apply -f k8s-deployment.yaml
+        
+        # Ingress 배포 (선택적)
+        if [ -f k8s-ingress.yaml ]; then
+          kubectl apply -f k8s-ingress.yaml
+          echo "Ingress deployed"
+        fi
         
         echo "Waiting for rollout..."
         kubectl rollout status deployment/journal-api --timeout=3m || {
@@ -94,6 +93,7 @@ jobs:
         echo "Deployment status:"
         kubectl get pods -l app=journal-api
         kubectl get svc journal-api-service
+        kubectl get ingress journal-api-ingress || echo "No ingress configured"
 
     - name: Show deployment info on failure
       if: failure()
