@@ -7,7 +7,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# pip 업그레이드
+RUN pip install --no-cache-dir --upgrade pip
 
 # Python 의존성 설치
 COPY requirements.txt .
