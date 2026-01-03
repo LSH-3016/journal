@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import os
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -14,13 +15,23 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # CORS 설정
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 origin 허용 (프로덕션에서는 특정 도메인만 허용)
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # 모든 HTTP 메서드 허용
-    allow_headers=["*"],  # 모든 헤더 허용
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# 헬스체크 엔드포인트
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "journal-api"}
+
+@app.get("/")
+async def root():
+    return {"message": "Journal API is running", "docs": "/docs"}
 
 # 라우터 등록
 app.include_router(messages.router)

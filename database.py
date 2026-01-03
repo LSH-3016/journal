@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 def get_database_url():
-    db_host = os.getenv("DB_HOST")
-    db_port = os.getenv("DB_PORT")
-    db_name = os.getenv("DB_NAME")
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "journal_db")
     db_user = os.getenv("DB_USER")
     db_password = os.getenv("DB_PASSWORD")
     
     # 필수 환경변수 체크
-    if not all([db_host, db_port, db_name, db_user, db_password]):
+    if not all([db_user, db_password]):
         raise ValueError(
-            "데이터베이스 설정이 필요합니다. "
-            ".env 파일에 DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD를 설정해주세요."
+            "데이터베이스 인증 정보가 필요합니다. "
+            "DB_USER, DB_PASSWORD 환경변수를 설정해주세요."
         )
     
     return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"

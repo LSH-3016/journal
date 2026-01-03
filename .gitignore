@@ -8,7 +8,9 @@ venv/
 
 # 환경 변수 파일
 .env
-.env.example
+
+# Kubernetes Secrets (민감 데이터)
+k8s-secrets.yaml
 
 # 로그 파일
 *.log
