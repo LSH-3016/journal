@@ -17,7 +17,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-  - host: api.aws11.shop
+  - host: journal.aws11.shop
     http:
       paths:
       - path: /
