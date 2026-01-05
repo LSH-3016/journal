@@ -65,10 +65,10 @@ jobs:
         IMAGE_TAG: v${{ github.run_number }}
       run: |
         # k8s manifest 파일의 이미지 태그 업데이트
-        if [ -f k8s-deployment.yaml ]; then
-          sed -i "s|image: .*/journal-api:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
-          echo "✅ Updated k8s-deployment.yaml with new image tag: $IMAGE_TAG"
-          cat k8s-deployment.yaml | grep "image:"
+        if [ -f k8s/k8s-deployment.yaml ]; then
+          sed -i "s|image: .*/journal-api:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s/k8s-deployment.yaml
+          echo "✅ Updated k8s/k8s-deployment.yaml with new image tag: $IMAGE_TAG"
+          cat k8s/k8s-deployment.yaml | grep "image:"
         fi
 
     - name: Commit and push updated manifest
@@ -78,8 +78,8 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         
-        if [ -f k8s-deployment.yaml ]; then
-          git add k8s-deployment.yaml
+        if [ -f k8s/k8s-deployment.yaml ]; then
+          git add k8s/k8s-deployment.yaml
           
           # 변경사항이 있는지 확인
           if git diff --staged --quiet; then
@@ -92,7 +92,7 @@ jobs:
             echo "✅ Pushed updated manifest to repository"
           fi
         else
-          echo "⚠️ k8s-deployment.yaml not found, skipping manifest update"
+          echo "⚠️ k8s/k8s-deployment.yaml not found, skipping manifest update"
         fi
 
     - name: Summary

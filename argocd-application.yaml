@@ -15,7 +15,8 @@ spec:
     # Git 저장소 URL
     repoURL: https://github.com/LSH-3016/journal.git
     targetRevision: main
-    path: .
+    # k8s 폴더만 읽도록 설정 (다른 yaml 파일 제외)
+    path: k8s
   
   # 배포 대상 클러스터 설정
   destination:
