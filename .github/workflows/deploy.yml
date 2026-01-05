@@ -7,6 +7,11 @@ on:
       - develop
   workflow_dispatch:
 
+# GitHub Actions에 쓰기 권한 부여
+permissions:
+  contents: write
+  packages: write
+
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: journal-api
@@ -61,8 +66,9 @@ jobs:
       run: |
         # k8s manifest 파일의 이미지 태그 업데이트
         if [ -f k8s-deployment.yaml ]; then
-          sed -i "s|image:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
-          echo "✅ Updated k8s-deployment.yaml with new image tag"
+          sed -i "s|image: .*/journal-api:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
+          echo "✅ Updated k8s-deployment.yaml with new image tag: $IMAGE_TAG"
+          cat k8s-deployment.yaml | grep "image:"
         fi
 
     - name: Commit and push updated manifest
@@ -74,9 +80,17 @@ jobs:
         
         if [ -f k8s-deployment.yaml ]; then
           git add k8s-deployment.yaml
-          git diff --staged --quiet || git commit -m "chore: update image tag to $IMAGE_TAG [skip ci]"
-          git push
-          echo "✅ Pushed updated manifest to repository"
+          
+          # 변경사항이 있는지 확인
+          if git diff --staged --quiet; then
+            echo "⚠️ No changes to commit"
+          else
+            git commit -m "chore: update image tag to $IMAGE_TAG [skip ci]"
+            
+            # GITHUB_TOKEN을 사용하여 푸시
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+            echo "✅ Pushed updated manifest to repository"
+          fi
         else
           echo "⚠️ k8s-deployment.yaml not found, skipping manifest update"
         fi
