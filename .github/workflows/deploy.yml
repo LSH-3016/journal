@@ -1,4 +1,4 @@
-name: Deploy to EKS
+name: Build and Push to ECR
 
 on:
   push:
@@ -10,11 +10,10 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: journal-api
-  EKS_CLUSTER_NAME: fproject-dev-eks
 
 jobs:
-  deploy:
-    name: Build and Deploy
+  build:
+    name: Build and Push Image
     runs-on: ubuntu-latest
 
     steps:
@@ -37,77 +36,59 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: v${{ github.run_number }}
+        COMMIT_SHA: ${{ github.sha }}
       run: |
+        # Docker 이미지 빌드
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        
+        # 태그 추가
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_SHA
+        
+        # ECR에 푸시
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_SHA
+        
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "✅ Built and pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        echo "✅ Image also tagged as: latest, $COMMIT_SHA"
 
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.28.0'
+    - name: Update image tag in manifest
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: v${{ github.run_number }}
+      run: |
+        # k8s manifest 파일의 이미지 태그 업데이트
+        if [ -f k8s-deployment.yaml ]; then
+          sed -i "s|image:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
+          echo "✅ Updated k8s-deployment.yaml with new image tag"
+        fi
 
-    - name: Update kube config
-      run: |
-        aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
-        
-    - name: Test EKS connection
-      run: |
-        kubectl version --client
-        kubectl cluster-info || echo "Cluster info failed, but continuing..."
-        
-    - name: Check current context
-      run: |
-        kubectl config current-context || echo "No context available"
-        kubectl auth can-i get pods --all-namespaces || echo "Limited permissions"
-
-    - name: Deploy to EKS
+    - name: Commit and push updated manifest
       env:
         IMAGE_TAG: v${{ github.run_number }}
       run: |
-        # 이미지 태그 업데이트
-        sed -i "s|image:.*|image: ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         
-        # Deployment, Service, ServiceAccount 배포
-        kubectl apply -f k8s-deployment.yaml
-        
-        # Ingress 배포 (선택적)
-        if [ -f k8s-ingress.yaml ]; then
-          kubectl apply -f k8s-ingress.yaml
-          echo "Ingress deployed"
+        if [ -f k8s-deployment.yaml ]; then
+          git add k8s-deployment.yaml
+          git diff --staged --quiet || git commit -m "chore: update image tag to $IMAGE_TAG [skip ci]"
+          git push
+          echo "✅ Pushed updated manifest to repository"
+        else
+          echo "⚠️ k8s-deployment.yaml not found, skipping manifest update"
         fi
-        
-        echo "Waiting for rollout..."
-        kubectl rollout status deployment/journal-api --timeout=3m || {
-          echo "Rollout failed. Checking pod status..."
-          kubectl get pods -l app=journal-api
-          kubectl describe pods -l app=journal-api
-          echo "Pod logs:"
-          kubectl logs -l app=journal-api --tail=100 || echo "No logs available"
-          exit 1
-        }
-        
-        echo "Deployment status:"
-        kubectl get pods -l app=journal-api
-        kubectl get svc journal-api-service
-        kubectl get ingress journal-api-ingress || echo "No ingress configured"
 
-    - name: Show deployment info on failure
-      if: failure()
+    - name: Summary
       run: |
-        echo "=== Deployment Status ==="
-        kubectl get deployment journal-api -o yaml
-        echo "=== Pod Status ==="
-        kubectl get pods -l app=journal-api -o wide
-        echo "=== Pod Events ==="
-        kubectl get events --sort-by=.metadata.creationTimestamp | grep journal-api
-        echo "=== Pod Logs ==="
-        kubectl logs -l app=journal-api --tail=200 --all-containers=true || echo "No logs available"
-
-    - name: Verify deployment
-      run: |
-        kubectl get deployment journal-api
-        kubectl get pods -l app=journal-api
+        echo "### 🚀 Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:v${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tags**: v${{ github.run_number }}, latest, ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Image pushed to ECR successfully" >> $GITHUB_STEP_SUMMARY
+        echo "🔄 ArgoCD will automatically deploy this image to EKS" >> $GITHUB_STEP_SUMMARY

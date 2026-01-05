@@ -335,7 +335,27 @@ logging.basicConfig(level=logging.INFO)
 
 ## 🚀 배포
 
-### Docker를 사용한 배포
+### GitOps 기반 배포 (ArgoCD)
+
+이 프로젝트는 GitOps 방식으로 배포됩니다:
+
+1. **GitHub Actions**: 코드 푸시 시 Docker 이미지를 빌드하여 ECR에 푸시
+2. **ArgoCD**: Git 저장소를 모니터링하여 EKS에 자동 배포
+
+```
+코드 푸시 → GitHub Actions → ECR 이미지 푸시 → ArgoCD → EKS 배포
+```
+
+**배포 설정:**
+- GitHub Actions 워크플로우: `.github/workflows/deploy.yml`
+- ArgoCD Application: `argocd-application.yaml`
+- Kubernetes Manifests: `k8s-deployment.yaml`, `k8s-ingress.yaml`
+
+**배포 가이드:**
+- 🚀 **빠른 시작**: [ARGOCD_QUICKSTART.md](./ARGOCD_QUICKSTART.md) - 5분 안에 배포하기
+- 📚 **상세 가이드**: [ARGOCD_SETUP.md](./ARGOCD_SETUP.md) - 전체 설정 및 트러블슈팅
+
+### Docker를 사용한 로컬 배포
 ```dockerfile
 FROM python:3.9-slim
 
@@ -349,10 +369,18 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
+```bash
+# 이미지 빌드
+docker build -t journal-api:latest .
+
+# 컨테이너 실행
+docker run -p 8000:8000 --env-file .env journal-api:latest
+```
+
 ### 환경별 설정
-- **개발환경**: `DEBUG=True`, 로컬 DB
-- **스테이징**: `DEBUG=False`, 클라우드 DB
-- **프로덕션**: `DEBUG=False`, 프로덕션 DB, 로드밸런서
+- **개발환경**: `DEBUG=True`, 로컬 DB, Port Forward
+- **스테이징**: `DEBUG=False`, 클라우드 DB, ArgoCD 자동 배포
+- **프로덕션**: `DEBUG=False`, 프로덕션 DB, ArgoCD + 수동 승인
 
 ---
 
