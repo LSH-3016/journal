@@ -12,15 +12,10 @@ spec:
   
   # 소스 저장소 설정
   source:
-    # Git 저장소 URL (실제 저장소 URL로 변경 필요)
-    repoURL: https://github.com/your-org/journal-api.git
+    # Git 저장소 URL
+    repoURL: https://github.com/LSH-3016/journal.git
     targetRevision: main
     path: .
-    
-    # Kustomize 사용 시 (선택사항)
-    # kustomize:
-    #   images:
-    #     - your-ecr-registry/journal-api
   
   # 배포 대상 클러스터 설정
   destination:
