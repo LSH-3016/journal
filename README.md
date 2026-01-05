@@ -186,7 +186,15 @@ curl "http://localhost:8000/summary/check/user_001"
 }
 ```
 
+## 📖 API 사용법
+
 더 자세한 API 사용법은 [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)를 참조하세요.
+
+**빠른 링크:**
+- 📁 [프로젝트 구조 및 아키텍처](./PROJECT_OVERVIEW.md)
+- 🚀 [ArgoCD 빠른 시작 (5분)](./ARGOCD_QUICKSTART.md)
+- 📚 [ArgoCD 상세 설정](./ARGOCD_SETUP.md)
+- 🗄️ [데이터베이스 ERD](./DATABASE_ERD.md)
 
 ---
 
@@ -223,41 +231,55 @@ CREATE TABLE history (
 
 ```
 journal-api/
-├── main.py                 # FastAPI 애플리케이션 진입점
-├── database.py             # 데이터베이스 연결 설정
-├── requirements.txt        # Python 의존성
-├── .env                   # 환경변수 (git에 포함되지 않음)
-├── .env.example           # 환경변수 예시
-├── migrate_history_table.py # 데이터베이스 마이그레이션
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # GitHub Actions - ECR 이미지 빌드 및 푸시
 │
-├── models/                # SQLAlchemy 모델
+├── models/                     # SQLAlchemy 모델
 │   ├── __init__.py
-│   ├── message.py         # Message 모델
-│   └── history.py         # History 모델
+│   ├── message.py
+│   └── history.py
 │
-├── schemas/               # Pydantic 스키마
+├── schemas/                    # Pydantic 스키마
 │   ├── __init__.py
-│   ├── message.py         # Message 스키마
-│   ├── history.py         # History 스키마
-│   └── summary.py         # Summary 스키마
+│   ├── message.py
+│   ├── history.py
+│   └── summary.py
 │
-├── routers/               # FastAPI 라우터
+├── routers/                    # FastAPI 라우터
 │   ├── __init__.py
-│   ├── messages.py        # 메시지 API
-│   ├── history.py         # 히스토리 API
-│   ├── summary.py         # 요약 API
-│   └── flow.py           # Flow API
+│   ├── messages.py
+│   ├── history.py
+│   ├── summary.py
+│   └── flow.py
 │
-├── services/              # 비즈니스 로직
+├── services/                   # 비즈니스 로직
 │   ├── __init__.py
-│   ├── bedrock.py         # Bedrock 서비스
-│   ├── s3.py             # S3 서비스
-│   └── flow.py           # Flow 서비스
+│   ├── bedrock.py             # AWS Bedrock 서비스
+│   ├── s3.py                  # AWS S3 서비스
+│   └── flow.py                # Bedrock Flow 서비스
 │
-└── docs/                  # 문서
-    ├── API_DOCUMENTATION.md
-    ├── DATABASE_ERD.md
-    └── README.md
+├── main.py                     # FastAPI 애플리케이션 진입점
+├── database.py                 # 데이터베이스 연결 설정
+├── config.py                   # 설정 관리
+├── requirements.txt            # Python 의존성
+├── Dockerfile                  # Docker 이미지 빌드
+├── .env                       # 환경변수 (git에 포함되지 않음)
+│
+├── k8s-deployment.yaml         # Kubernetes Deployment, Service, ServiceAccount
+├── k8s-ingress.yaml           # Kubernetes Ingress (ALB)
+├── argocd-application.yaml    # ArgoCD Application 정의
+│
+└── docs/                       # 문서
+    ├── README.md              # 프로젝트 개요
+    ├── API_DOCUMENTATION.md   # API 상세 문서
+    ├── DATABASE_ERD.md        # 데이터베이스 ERD
+    ├── DATABASE_SETUP.md      # 데이터베이스 설정
+    ├── ARGOCD_QUICKSTART.md   # ArgoCD 빠른 시작 (5분)
+    ├── ARGOCD_SETUP.md        # ArgoCD 상세 설정
+    ├── SECRETS_SETUP.md       # AWS Secrets 설정
+    ├── SETUP_CLOUDFRONT.md    # CloudFront 설정
+    └── SETUP_S3_TO_API.md     # S3 연동 설정
 ```
 
 ---

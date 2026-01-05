@@ -4,37 +4,35 @@
 
 ## 🚀 5분 안에 배포하기
 
-### 1단계: Git 저장소 URL 확인
-
-`argocd-application.yaml` 파일을 열고 실제 저장소 URL로 수정:
-
-```yaml
-source:
-  repoURL: https://github.com/your-org/journal-api.git  # 실제 URL로 변경
-  targetRevision: main  # 또는 develop
-```
-
-### 2단계: ArgoCD에 저장소 등록
+### 1단계: ArgoCD에 Git 저장소 등록
 
 **방법 A: ArgoCD UI 사용 (추천)**
 
 1. ArgoCD UI 접속
 2. **Settings** → **Repositories** → **Connect Repo**
-3. 저장소 URL 입력 후 **Connect**
+3. 다음 정보 입력:
+   - **Connection Method**: `VIA HTTPS`
+   - **Type**: `git`
+   - **Repository URL**: `https://github.com/LSH-3016/journal.git`
+   - **Username**: `LSH-3016`
+   - **Password**: GitHub Personal Access Token
+4. **Connect** 클릭
 
 **방법 B: CLI 사용**
 
 ```bash
-# Public 저장소
-argocd repo add https://github.com/your-org/journal-api.git
-
-# Private 저장소
-argocd repo add https://github.com/your-org/journal-api.git \
-  --username your-username \
-  --password ghp_your_token
+argocd repo add https://github.com/LSH-3016/journal.git \
+  --username LSH-3016 \
+  --password <your-github-token>
 ```
 
-### 3단계: Application 생성
+**GitHub Personal Access Token 생성:**
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token (classic)
+3. 권한: `repo` 전체 선택
+4. Generate token 후 복사
+
+### 2단계: Application 생성
 
 **방법 A: kubectl 사용 (추천)**
 
@@ -48,10 +46,11 @@ kubectl apply -f argocd-application.yaml
 2. 다음 정보 입력:
    - **Application Name**: `journal-api`
    - **Project**: `default`
-   - **Sync Policy**: `Automatic`
-   - **Repository URL**: 저장소 URL
+   - **Sync Policy**: `Automatic` 체크
+   - **Repository URL**: `https://github.com/LSH-3016/journal.git`
+   - **Revision**: `main`
    - **Path**: `.` (루트 디렉토리)
-   - **Cluster**: `https://kubernetes.default.svc`
+   - **Cluster URL**: `https://kubernetes.default.svc`
    - **Namespace**: `default`
 3. **Create** 클릭
 
@@ -59,7 +58,7 @@ kubectl apply -f argocd-application.yaml
 
 ```bash
 argocd app create journal-api \
-  --repo https://github.com/your-org/journal-api.git \
+  --repo https://github.com/LSH-3016/journal.git \
   --path . \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace default \
@@ -68,15 +67,16 @@ argocd app create journal-api \
   --self-heal
 ```
 
-### 4단계: 배포 확인
+### 3단계: 배포 확인
 
 ```bash
 # Application 상태 확인
 argocd app get journal-api
 
 # 또는 kubectl로 확인
-kubectl get pods -l app=journal-api
-kubectl get svc journal-api-service
+kubectl get pods -l app=journal-api -n default
+kubectl get svc journal-api-service -n default
+kubectl get ingress journal-api-ingress -n default
 ```
 
 ---
@@ -85,21 +85,19 @@ kubectl get svc journal-api-service
 
 배포 전 확인사항:
 
-- [ ] `argocd-application.yaml`에 실제 Git 저장소 URL 입력
-- [ ] ArgoCD에 Git 저장소 등록 완료
-- [ ] ECR 접근 권한 설정 (IRSA 또는 imagePullSecrets)
-- [ ] `k8s-deployment.yaml`에 올바른 이미지 URL 설정
+- [ ] GitHub Personal Access Token 생성
+- [ ] ArgoCD에 Git 저장소 등록 (`https://github.com/LSH-3016/journal.git`)
+- [ ] ArgoCD Application 생성 (`journal-api`)
+- [ ] ECR 접근 권한 설정 (IRSA 권장)
 - [ ] GitHub Secrets 설정 (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- [ ] 네임스페이스 확인: `default` (기존과 동일)
-- [ ] ALB 그룹 확인: `fproject-alb` (기존 ALB에 자동 연결됨)
+- [ ] GitHub Actions 워크플로우 권한 설정 (Read and write permissions)
 
 ---
 
 ## 🌐 네트워크 구성
 
 ### 네임스페이스
-- **배포 네임스페이스**: `default` (기존과 동일)
-- 모든 리소스(Deployment, Service, Ingress)가 `default` 네임스페이스에 배포됩니다.
+- **배포 네임스페이스**: `default`
 
 ### 로드밸런서 구성
 - **Service 타입**: `NodePort` (포트 32000)
@@ -108,7 +106,7 @@ kubectl get svc journal-api-service
 - **도메인**: `journal.aws11.shop`
 - **SSL 인증서**: ACM 인증서 자동 적용
 
-**중요**: `k8s-ingress.yaml`의 `alb.ingress.kubernetes.io/group.name: fproject-alb` 설정으로 인해 이 애플리케이션은 기존 `fproject-alb` ALB에 자동으로 추가됩니다. 별도의 ALB가 생성되지 않습니다.
+**중요**: `alb.ingress.kubernetes.io/group.name: fproject-alb` 설정으로 인해 이 애플리케이션은 기존 `fproject-alb` ALB에 자동으로 추가됩니다. 별도의 ALB가 생성되지 않습니다.
 
 ---
 

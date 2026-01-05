@@ -162,29 +162,34 @@ spec:
 
 ArgoCD에 이 프로젝트의 Git 저장소를 등록합니다.
 
+**저장소 정보:**
+- Repository URL: `https://github.com/LSH-3016/journal.git`
+- Branch: `main`
+
 **CLI 사용:**
 ```bash
-# Public 저장소
-argocd repo add https://github.com/your-org/journal-api.git
-
 # Private 저장소 (Personal Access Token)
-argocd repo add https://github.com/your-org/journal-api.git \
-  --username your-username \
+argocd repo add https://github.com/LSH-3016/journal.git \
+  --username LSH-3016 \
   --password ghp_your_personal_access_token
-
-# Private 저장소 (SSH)
-argocd repo add git@github.com:your-org/journal-api.git \
-  --ssh-private-key-path ~/.ssh/id_rsa
 ```
 
 **UI 사용:**
 1. ArgoCD UI 접속
 2. **Settings** → **Repositories** → **Connect Repo**
 3. 저장소 정보 입력:
-   - Repository URL: `https://github.com/your-org/journal-api.git`
-   - Username: GitHub 사용자명 (Private 저장소인 경우)
-   - Password: Personal Access Token (Private 저장소인 경우)
+   - **Connection Method**: `VIA HTTPS`
+   - **Type**: `git`
+   - **Repository URL**: `https://github.com/LSH-3016/journal.git`
+   - **Username**: `LSH-3016`
+   - **Password**: Personal Access Token
 4. **Connect** 클릭
+
+**GitHub Personal Access Token 생성:**
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. **Generate new token (classic)** 클릭
+3. 권한 선택: ✅ `repo` (전체 선택)
+4. **Generate token** 클릭 후 복사
 
 **저장소 연결 확인:**
 ```bash
@@ -252,9 +257,9 @@ kubectl describe ingress journal-api-ingress -n default
 
 ## 📦 Application 배포
 
-### 1. Application 매니페스트 수정
+### 1. Application 매니페스트 확인
 
-`argocd-application.yaml` 파일을 프로젝트에 맞게 수정:
+`argocd-application.yaml` 파일이 올바르게 설정되어 있는지 확인:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -266,13 +271,13 @@ spec:
   project: default
   
   source:
-    repoURL: https://github.com/your-org/journal-api.git  # 실제 저장소 URL로 변경
-    targetRevision: main  # 또는 develop
+    repoURL: https://github.com/LSH-3016/journal.git
+    targetRevision: main
     path: .
   
   destination:
     server: https://kubernetes.default.svc
-    namespace: default  # 배포할 네임스페이스
+    namespace: default
   
   syncPolicy:
     automated:
@@ -290,7 +295,7 @@ kubectl apply -f argocd-application.yaml
 **방법 2: ArgoCD CLI 사용**
 ```bash
 argocd app create journal-api \
-  --repo https://github.com/your-org/journal-api.git \
+  --repo https://github.com/LSH-3016/journal.git \
   --path . \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace default \
