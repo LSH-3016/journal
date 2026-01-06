@@ -53,9 +53,14 @@ spec:
         factor: 2
         maxDuration: 3m
   
-  # 무시할 차이점 설정 (선택사항)
+  # 무시할 차이점 설정
   ignoreDifferences:
     - group: apps
       kind: Deployment
       jsonPointers:
         - /spec/replicas
+    # aws-load-balancer-controller는 ArgoCD가 관리하지 않음
+    - group: ""
+      kind: ServiceAccount
+      name: aws-load-balancer-controller
+      namespace: kube-system
