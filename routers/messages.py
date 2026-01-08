@@ -6,7 +6,7 @@ import uuid
 
 from database import get_db
 from models.message import Message
-from schemas.message import MessageCreate, MessageResponse, MessageContentResponse
+from schemas.message import MessageCreate, MessageResponse, MessageContentResponse, MessageUpdate
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -157,6 +157,32 @@ def get_message_by_id(message_id: str, db: Session = Depends(get_db)):
         user_id=message.user_id,
         content=message.content,
         created_at=message.created_at
+    )
+
+@router.put("/{message_id}", response_model=MessageResponse)
+def update_message(message_id: str, message_update: MessageUpdate, db: Session = Depends(get_db)):
+    """
+    메시지를 수정하는 엔드포인트
+    """
+    try:
+        message_uuid = uuid.UUID(message_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="유효하지 않은 UUID 형식입니다")
+    
+    db_message = db.query(Message).filter(Message.id == message_uuid).first()
+    if not db_message:
+        raise HTTPException(status_code=404, detail="메시지를 찾을 수 없습니다")
+    
+    # content 업데이트
+    db_message.content = message_update.content
+    db.commit()
+    db.refresh(db_message)
+    
+    return MessageResponse(
+        id=str(db_message.id),
+        user_id=db_message.user_id,
+        content=db_message.content,
+        created_at=db_message.created_at
     )
 
 @router.delete("/{message_id}")

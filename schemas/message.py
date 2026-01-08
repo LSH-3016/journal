@@ -18,5 +18,8 @@ class MessageResponse(BaseModel):
             uuid.UUID: lambda v: str(v)
         }
 
+class MessageUpdate(BaseModel):
+    content: str
+
 class MessageContentResponse(BaseModel):
     contents: str
