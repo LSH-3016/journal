@@ -7,7 +7,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 
 from database import Base, engine
-from routers import messages, history, summary, flow, stt
+from routers import messages, history, summary, flow
 
 # 테이블 생성
 Base.metadata.create_all(bind=engine)
@@ -38,4 +38,3 @@ app.include_router(messages.router)
 app.include_router(history.router)
 app.include_router(summary.router)
 app.include_router(flow.router)
-app.include_router(stt.router)
