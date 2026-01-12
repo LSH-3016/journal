@@ -25,11 +25,12 @@ class S3Service:
         logger.info(f"S3Service initialized with bucket: {self.bucket_name}")
     
     def generate_s3_key(self, user_id: str, record_date: date) -> str:
-        """S3 키를 생성합니다. 형식: {user_id}/history/{YYYY}/{MM}/{YYYY-MM-DD}.txt"""
+        """S3 키를 생성합니다. 형식: {user_id}/history/{YYYY}/{MM}/{DD}/{YYYY-MM-DD}.txt"""
         year = record_date.strftime("%Y")
         month = record_date.strftime("%m")
+        day = record_date.strftime("%d")
         date_str = record_date.strftime("%Y-%m-%d")
-        return f"{user_id}/history/{year}/{month}/{date_str}.txt"
+        return f"{user_id}/history/{year}/{month}/{day}/{date_str}.txt"
     
     def save_history_to_s3(self, user_id: str, content: str, record_date: date, tags: Optional[list] = None) -> str:
         """

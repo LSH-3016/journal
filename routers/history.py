@@ -328,6 +328,24 @@ def get_history_s3_content(history_id: int, db: Session = Depends(get_db)):
         logger.error(f"S3 읽기 실패: {e}")
         raise HTTPException(status_code=500, detail=f"S3에서 파일을 읽는 중 오류가 발생했습니다: {str(e)}")
 
+@router.patch("/{history_id}/s3-key", response_model=HistoryResponse)
+def update_s3_key(history_id: int, s3_key: str, db: Session = Depends(get_db)):
+    """
+    특정 기록의 s3_key(이미지 URL)를 업데이트하는 엔드포인트
+    
+    - history_id: 기록 ID
+    - s3_key: 새로운 S3 이미지 URL
+    """
+    db_history = db.query(History).filter(History.id == history_id).first()
+    if not db_history:
+        raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다")
+    
+    db_history.s3_key = s3_key
+    db.commit()
+    db.refresh(db_history)
+    return db_history
+
+
 @router.delete("/{history_id}")
 def delete_history(history_id: int, db: Session = Depends(get_db)):
     """
