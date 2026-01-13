@@ -79,7 +79,7 @@ kubectl get svc journal-api-service -n default
 kubectl get ingress journal-api-ingress -n default
 
 # 서비스 접속 테스트
-curl https://journal.aws11.shop/health
+curl https://api.aws11.shop/journal/health
 ```
 
 ---
@@ -104,13 +104,14 @@ curl https://journal.aws11.shop/health
 - **배포 네임스페이스**: `default`
 
 ### 로드밸런서 구성
-- **Service 타입**: `NodePort` (포트 32000)
+- **Service 타입**: `ClusterIP`
 - **Ingress**: AWS ALB Controller 사용
-- **ALB 그룹**: `fproject-alb` (기존 ALB에 자동으로 추가됨)
-- **도메인**: `journal.aws11.shop`
+- **ALB 그룹**: `one-api-alb`
+- **도메인**: `api.aws11.shop`
+- **Path**: `/journal`
 - **SSL 인증서**: ACM 인증서 (arn:aws:acm:us-east-1:324547056370:certificate/dcba4e4a-c0d5-4e97-aecc-91a1b35f7355)
 
-**중요**: `alb.ingress.kubernetes.io/group.name: fproject-alb` 설정으로 인해 이 애플리케이션은 기존 `fproject-alb` ALB에 자동으로 추가됩니다. 별도의 ALB가 생성되지 않습니다.
+**중요**: `alb.ingress.kubernetes.io/group.name: one-api-alb` 설정으로 인해 이 애플리케이션은 기존 `one-api-alb` ALB에 자동으로 추가됩니다. 별도의 ALB가 생성되지 않습니다.
 
 ---
 
@@ -145,7 +146,7 @@ env:
 - name: AWS_REGION
   value: "us-east-1"
 - name: ALLOWED_ORIGINS
-  value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop"
+  value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop,https://api.aws11.shop"
 - name: DEBUG
   value: "False"
 - name: ENVIRONMENT
@@ -162,6 +163,7 @@ env:
 - `https://www.aws11.shop`
 - `https://aws11.shop`
 - `https://journal.aws11.shop`
+- `https://api.aws11.shop`
 
 추가 도메인이 필요하면 콤마로 구분하여 추가
 
@@ -285,7 +287,7 @@ argocd app sync journal-api
 `k8s/k8s-deployment.yaml`의 `ALLOWED_ORIGINS`에 도메인 추가:
 ```yaml
 - name: ALLOWED_ORIGINS
-  value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop,https://new-domain.com"
+  value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop,https://api.aws11.shop,https://new-domain.com"
 ```
 
 ---

@@ -274,10 +274,10 @@ psql -h localhost -U username -d journal_db < messages_backup.sql
 
 ### 10.1 History API 검색 엔드포인트
 ```
-GET /history/search          - 키워드로 검색 (content 필드)
-GET /history/tags            - 태그로 검색
-GET /history/date-range      - 날짜 범위로 조회
-GET /history/tags/list       - 모든 태그 목록 조회
+GET /journal/history/search          - 키워드로 검색 (content 필드)
+GET /journal/history/tags            - 태그로 검색
+GET /journal/history/date-range      - 날짜 범위로 조회
+GET /journal/history/tags/list       - 모든 태그 목록 조회
 ```
 
 ### 10.2 SummaryExistsResponse 스키마 변경
@@ -291,7 +291,7 @@ class SummaryExistsResponse(BaseModel):
 ```
 
 ### 10.3 업데이트된 API 응답 예시
-**GET /summary/check/{user_id} 응답:**
+**GET /journal/summary/check/{user_id} 응답:**
 ```json
 {
   "exists": true,

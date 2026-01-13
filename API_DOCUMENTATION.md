@@ -9,11 +9,19 @@
 
 ---
 
-## 1. Messages API (`/messages`)
+## Base URL
+
+```
+https://api.aws11.shop/journal
+```
+
+---
+
+## 1. Messages API (`/journal/messages`)
 
 ### 1.1 메시지 생성
 ```http
-POST /messages
+POST /journal/messages
 Content-Type: application/json
 
 {
@@ -34,7 +42,7 @@ Content-Type: application/json
 
 ### 1.2 메시지 조회 (오늘 날짜만)
 ```http
-GET /messages?user_id=user_001&limit=100&offset=0
+GET /journal/messages?user_id=user_001&limit=100&offset=0
 ```
 
 **응답:**
@@ -51,7 +59,7 @@ GET /messages?user_id=user_001&limit=100&offset=0
 
 ### 1.3 메시지 내용만 조회 (콤마 구분)
 ```http
-GET /messages/content?user_id=user_001
+GET /journal/messages/content?user_id=user_001
 ```
 
 **응답:**
@@ -63,31 +71,31 @@ GET /messages/content?user_id=user_001
 
 ### 1.4 전체 메시지 조회 (디버그용)
 ```http
-GET /messages/debug/all?user_id=user_001
+GET /journal/messages/debug/all?user_id=user_001
 ```
 
 ### 1.5 메시지 날짜 정보 확인 (디버그용)
 ```http
-GET /messages/debug/dates
+GET /journal/messages/debug/dates
 ```
 
 ### 1.6 특정 메시지 조회
 ```http
-GET /messages/{message_id}
+GET /journal/messages/{message_id}
 ```
 
 ### 1.7 메시지 삭제
 ```http
-DELETE /messages/{message_id}
+DELETE /journal/messages/{message_id}
 ```
 
 ---
 
-## 2. History API (`/history`)
+## 2. History API (`/journal/history`)
 
 ### 2.1 히스토리 생성/업데이트
 ```http
-POST /history
+POST /journal/history
 Content-Type: application/json
 
 {
@@ -114,12 +122,12 @@ Content-Type: application/json
 
 ### 2.2 히스토리 조회
 ```http
-GET /history?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&tags=운동,회의&limit=100&offset=0
+GET /journal/history?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&tags=운동,회의&limit=100&offset=0
 ```
 
 ### 2.3 키워드 검색
 ```http
-GET /history/search?user_id=user_001&q=운동&limit=100&offset=0
+GET /journal/history/search?user_id=user_001&q=운동&limit=100&offset=0
 ```
 
 **응답:**
@@ -139,17 +147,17 @@ GET /history/search?user_id=user_001&q=운동&limit=100&offset=0
 
 ### 2.4 태그로 검색
 ```http
-GET /history/tags?user_id=user_001&tags=운동,회의&limit=100&offset=0
+GET /journal/history/tags?user_id=user_001&tags=운동,회의&limit=100&offset=0
 ```
 
 ### 2.5 날짜 범위로 조회
 ```http
-GET /history/date-range?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&limit=100&offset=0
+GET /journal/history/date-range?user_id=user_001&start_date=2026-01-01&end_date=2026-01-31&limit=100&offset=0
 ```
 
 ### 2.6 모든 태그 목록 조회
 ```http
-GET /history/tags/list?user_id=user_001
+GET /journal/history/tags/list?user_id=user_001
 ```
 
 **응답:**
@@ -163,12 +171,7 @@ GET /history/tags/list?user_id=user_001
 
 ### 2.7 날짜별 S3 키 확인
 ```http
-GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
-```
-
-### 2.7 날짜별 S3 키 확인
-```http
-GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
+GET /journal/history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
 ```
 
 **응답:**
@@ -183,38 +186,38 @@ GET /history/check-s3-by-date?user_id=user_001&record_date=2026-01-01
 
 ### 2.8 특정 히스토리 조회
 ```http
-GET /history/{history_id}
+GET /journal/history/{history_id}
 ```
 
 ### 2.9 히스토리 수정
 ```http
-PUT /history/{history_id}
+PUT /journal/history/{history_id}
 ```
 
 ### 2.10 S3 키 확인
 ```http
-GET /history/{history_id}/check-s3
+GET /journal/history/{history_id}/check-s3
 ```
 
 ### 2.11 S3 텍스트 내용 조회
 ```http
-GET /history/{history_id}/s3-content
+GET /journal/history/{history_id}/s3-content
 ```
 
 ### 2.12 히스토리 삭제
 ```http
-DELETE /history/{history_id}
+DELETE /journal/history/{history_id}
 ```
 
 **참고:** 히스토리 삭제 시 DB 레코드와 함께 S3의 텍스트 파일(text_url)과 이미지 파일(s3_key)도 자동으로 삭제됩니다.
 
 ---
 
-## 3. Flow API (`/process`, `/test`)
+## 3. Flow API (`/journal/process`, `/journal/test`)
 
 ### 3.1 지능형 메시지 처리
 ```http
-POST /process
+POST /journal/process
 Content-Type: application/json
 
 {
@@ -249,7 +252,7 @@ Content-Type: application/json
 
 ### 3.2 Flow 테스트
 ```http
-POST /test?content=오늘 몇시에 일어났어?
+POST /journal/test?content=오늘 몇시에 일어났어?
 ```
 
 **응답:**
@@ -264,11 +267,11 @@ POST /test?content=오늘 몇시에 일어났어?
 
 ---
 
-## 4. Summary API (`/summary`)
+## 4. Summary API (`/journal/summary`)
 
 ### 4.1 요약 생성 (POST)
 ```http
-POST /summary
+POST /journal/summary
 Content-Type: application/json
 
 {
@@ -288,12 +291,12 @@ Content-Type: application/json
 
 ### 4.2 요약 조회 (GET)
 ```http
-GET /summary/user_001?date=2026-01-01&s3_key=https://example.com/image.jpg
+GET /journal/summary/user_001?date=2026-01-01&s3_key=https://example.com/image.jpg
 ```
 
 ### 4.3 오늘 요약 존재 확인
 ```http
-GET /summary/check/user_001
+GET /journal/summary/check/user_001
 ```
 
 **응답:**

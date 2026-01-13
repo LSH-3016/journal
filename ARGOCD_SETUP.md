@@ -214,28 +214,28 @@ kubectl get all -n default -l app=journal-api
 
 ### 로드밸런서 구성
 
-**Service (NodePort)**
-- 타입: `NodePort`
+**Service (ClusterIP)**
+- 타입: `ClusterIP`
 - 포트: 8000
-- NodePort: 32000
-- NLB 어노테이션 포함 (향후 확장 가능)
+- ALB Ingress Controller가 Pod IP로 직접 트래픽 전달
 
 **Ingress (ALB)**
-- **ALB 그룹**: `fproject-alb`
-- **도메인**: `journal.aws11.shop`
+- **ALB 그룹**: `one-api-alb`
+- **도메인**: `api.aws11.shop`
+- **Path**: `/journal`
 - **SSL/TLS**: ACM 인증서 자동 적용
 - **프로토콜**: HTTP (80) → HTTPS (443) 리다이렉트
 
-**중요**: `alb.ingress.kubernetes.io/group.name: fproject-alb` 설정으로 인해:
+**중요**: `alb.ingress.kubernetes.io/group.name: one-api-alb` 설정으로 인해:
 - 새로운 ALB가 생성되지 않음
-- 기존 `fproject-alb` ALB에 이 서비스가 자동으로 추가됨
+- 기존 `one-api-alb` ALB에 이 서비스가 자동으로 추가됨
 - 같은 ALB 그룹을 사용하는 다른 서비스들과 ALB를 공유
 - 비용 절감 및 관리 효율성 향상
 
 ```yaml
-# k8s-ingress.yaml의 핵심 설정
+# k8s/ingress.yaml의 핵심 설정
 annotations:
-  alb.ingress.kubernetes.io/group.name: fproject-alb  # 기존 ALB 그룹 사용
+  alb.ingress.kubernetes.io/group.name: one-api-alb  # 기존 ALB 그룹 사용
   alb.ingress.kubernetes.io/scheme: internet-facing
   alb.ingress.kubernetes.io/target-type: ip
 ```
@@ -247,7 +247,7 @@ annotations:
 kubectl get ingress -A
 
 # 특정 ALB 그룹의 Ingress 확인
-kubectl get ingress -A -o json | jq '.items[] | select(.metadata.annotations["alb.ingress.kubernetes.io/group.name"] == "fproject-alb")'
+kubectl get ingress -A -o json | jq '.items[] | select(.metadata.annotations["alb.ingress.kubernetes.io/group.name"] == "one-api-alb")'
 
 # ALB 상태 확인
 kubectl describe ingress journal-api-ingress -n default

@@ -68,7 +68,7 @@ ALLOWED_ORIGINS = "*"  # 모든 origin 허용
 
 ```javascript
 // API 기본 URL
-const API_BASE_URL = 'https://journal.aws11.shop';
+const API_BASE_URL = 'https://api.aws11.shop/journal';
 
 // 메시지 전송
 async function sendMessage(content) {
@@ -132,12 +132,12 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
 
 ```javascript
 // GET 요청
-fetch('https://journal.aws11.shop/health')
+fetch('https://api.aws11.shop/journal/health')
     .then(response => response.json())
     .then(data => console.log(data));
 
 // POST 요청
-fetch('https://journal.aws11.shop/messages', {
+fetch('https://api.aws11.shop/journal/messages', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ fetch('https://journal.aws11.shop/messages', {
 // <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 const api = axios.create({
-    baseURL: 'https://journal.aws11.shop',
+    baseURL: 'https://api.aws11.shop/journal',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
@@ -192,23 +192,23 @@ api.get('/history/user123', {
 ## 5단계: API 엔드포인트 목록
 
 ### 메시지 관련:
-- `POST /messages` - 메시지 전송
-- `GET /messages/{user_id}` - 메시지 목록 조회
+- `POST /journal/messages` - 메시지 전송
+- `GET /journal/messages/{user_id}` - 메시지 목록 조회
 
 ### 히스토리 관련:
-- `GET /history/{user_id}` - 히스토리 조회
-- `POST /history` - 히스토리 생성
-- `DELETE /history/{history_id}` - 히스토리 삭제
+- `GET /journal/history/{user_id}` - 히스토리 조회
+- `POST /journal/history` - 히스토리 생성
+- `DELETE /journal/history/{history_id}` - 히스토리 삭제
 
 ### 요약 관련:
-- `POST /summary` - 요약 생성
+- `POST /journal/summary` - 요약 생성
 
 ### Flow 관련:
-- `POST /flow/invoke` - Flow 호출
+- `POST /journal/process` - Flow 호출
 
 ### 기타:
-- `GET /health` - 헬스체크
-- `GET /docs` - API 문서 (Swagger UI)
+- `GET /journal/health` - 헬스체크
+- `GET /journal/docs` - API 문서 (Swagger UI)
 
 ## 6단계: 테스트
 
@@ -216,12 +216,12 @@ api.get('/history/user123', {
 
 ```javascript
 // 헬스체크
-fetch('https://journal.aws11.shop/health')
+fetch('https://api.aws11.shop/journal/health')
     .then(r => r.json())
     .then(console.log);
 
 // API 문서 확인
-window.open('https://journal.aws11.shop/docs', '_blank');
+window.open('https://api.aws11.shop/journal/docs', '_blank');
 ```
 
 ## 7단계: 프로덕션 보안 설정
@@ -229,9 +229,9 @@ window.open('https://journal.aws11.shop/docs', '_blank');
 ### CORS 제한:
 
 ```yaml
-# k8s-deployment.yaml
+# k8s/k8s-deployment.yaml
 - name: ALLOWED_ORIGINS
-  value: "https://www.aws11.shop"
+  value: "https://www.aws11.shop,https://api.aws11.shop"
 ```
 
 ### HTTPS 강제:
@@ -272,6 +272,6 @@ Request timeout
 - [ ] NLB EXTERNAL-IP 확인
 - [ ] Route 53 레코드 생성 (journal.aws11.shop)
 - [ ] DNS 전파 확인 (1-2분)
-- [ ] 브라우저에서 https://journal.aws11.shop/health 접속
+- [ ] 브라우저에서 https://api.aws11.shop/journal/health 접속
 - [ ] S3 웹사이트에서 API 호출 테스트
 - [ ] CORS 설정 확인

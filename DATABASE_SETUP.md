@@ -42,9 +42,9 @@ uvicorn main:app --reload
 
 ## 5. API 테스트
 
-- Swagger UI: http://localhost:8000/docs
-- 채팅 메시지 조회: GET /chat/messages
-- 메시지 생성: POST /chat/messages
+- Swagger UI: http://localhost:8000/journal/docs
+- 채팅 메시지 조회: GET /journal/messages
+- 메시지 생성: POST /journal/messages
 
 ## 주의사항
 

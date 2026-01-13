@@ -130,8 +130,12 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 서버가 실행되면 다음 URL에서 접근할 수 있습니다:
 - **API 서버**: http://localhost:8000
-- **API 문서**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **API 문서**: http://localhost:8000/journal/docs
+- **ReDoc**: http://localhost:8000/journal/redoc
+
+**프로덕션 URL:**
+- **API 서버**: https://api.aws11.shop/journal
+- **API 문서**: https://api.aws11.shop/journal/docs
 
 ---
 
@@ -139,7 +143,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### 메시지 저장
 ```bash
-curl -X POST "http://localhost:8000/messages" \
+curl -X POST "http://localhost:8000/journal/messages" \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "user_001",
@@ -149,7 +153,7 @@ curl -X POST "http://localhost:8000/messages" \
 
 ### 지능형 처리 (Flow API)
 ```bash
-curl -X POST "http://localhost:8000/process" \
+curl -X POST "http://localhost:8000/journal/process" \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "user_001",
@@ -162,7 +166,7 @@ curl -X POST "http://localhost:8000/process" \
 
 ### AI 요약 생성
 ```bash
-curl -X POST "http://localhost:8000/summary" \
+curl -X POST "http://localhost:8000/journal/summary" \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "user_001",
@@ -172,7 +176,7 @@ curl -X POST "http://localhost:8000/summary" \
 
 ### AI 요약 존재 확인
 ```bash
-curl "http://localhost:8000/summary/check/user_001"
+curl "http://localhost:8000/journal/summary/check/user_001"
 ```
 
 **응답:**
@@ -266,9 +270,10 @@ journal-api/
 ├── Dockerfile                  # Docker 이미지 빌드
 ├── .env                       # 환경변수 (git에 포함되지 않음)
 │
-├── k8s-deployment.yaml         # Kubernetes Deployment, Service, ServiceAccount
-├── k8s-ingress.yaml           # Kubernetes Ingress (ALB)
-├── argocd-application.yaml    # ArgoCD Application 정의
+├── k8s/                        # Kubernetes manifests
+│   ├── k8s-deployment.yaml     # Deployment, Service, ServiceAccount
+│   └── ingress.yaml            # Ingress (ALB)
+├── argocd-application.yaml     # ArgoCD Application 정의
 │
 └── docs/                       # 문서
     ├── README.md              # 프로젝트 개요
@@ -333,7 +338,7 @@ pytest tests/
 ### API 테스트
 ```bash
 # 서버가 실행 중인 상태에서
-curl http://localhost:8000/docs
+curl http://localhost:8000/journal/docs
 ```
 
 ---
