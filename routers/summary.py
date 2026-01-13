@@ -25,6 +25,8 @@ async def _get_user_messages_summary(
     user_id: str, 
     target_date: Optional[date], 
     s3_key: Optional[str],
+    temperature: Optional[float],
+    top_k: Optional[int],
     db: Session
 ) -> SummaryResponse:
     """공통 요약 로직"""
@@ -73,7 +75,11 @@ async def _get_user_messages_summary(
     
     try:
         # Bedrock을 사용하여 요약 생성
-        summary = await bedrock_service.summarize_content(combined_content)
+        summary = await bedrock_service.summarize_content(
+            combined_content,
+            temperature=temperature,
+            top_k=top_k
+        )
         
         # History에 요약 저장 (같은 날짜가 있으면 업데이트)
         existing_history = db.query(History).filter(
@@ -119,14 +125,25 @@ async def create_summary(
     
     - user_id: 요약할 사용자의 ID
     - s3_key: 업로드된 파일의 S3 키 (선택사항)
+    - temperature: 응답의 무작위성 (0.0 ~ 1.0, 선택사항, 기본값: 0.7)
+    - top_k: 상위 K개 토큰에서 샘플링 (1 ~ 500, 선택사항, 기본값: 50)
     """
-    return await _get_user_messages_summary(request.user_id, None, request.s3_key, db)
+    return await _get_user_messages_summary(
+        request.user_id, 
+        None, 
+        request.s3_key, 
+        request.temperature,
+        request.top_k,
+        db
+    )
 
 @router.get("/{user_id}", response_model=SummaryResponse)
 async def get_summary(
     user_id: str,
     date: Optional[str] = Query(None, description="요약할 날짜 (YYYY-MM-DD 형식, 기본값: 오늘)"),
     s3_key: Optional[str] = Query(None, description="업로드된 파일의 S3 키"),
+    temperature: Optional[float] = Query(None, ge=0.0, le=1.0, description="응답의 무작위성 (0.0 ~ 1.0)"),
+    top_k: Optional[int] = Query(None, ge=1, le=500, description="상위 K개 토큰에서 샘플링 (1 ~ 500)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -135,6 +152,8 @@ async def get_summary(
     - user_id: 요약할 사용자의 ID
     - date: 요약할 날짜 (선택사항, 기본값: 오늘)
     - s3_key: 업로드된 파일의 S3 키 (선택사항)
+    - temperature: 응답의 무작위성 (0.0 ~ 1.0, 선택사항, 기본값: 0.7)
+    - top_k: 상위 K개 토큰에서 샘플링 (1 ~ 500, 선택사항, 기본값: 50)
     """
     target_date = None
     if date:
@@ -143,7 +162,14 @@ async def get_summary(
         except ValueError:
             raise HTTPException(status_code=400, detail="날짜 형식이 올바르지 않습니다 (YYYY-MM-DD)")
     
-    return await _get_user_messages_summary(user_id, target_date, s3_key, db)
+    return await _get_user_messages_summary(
+        user_id, 
+        target_date, 
+        s3_key, 
+        temperature,
+        top_k,
+        db
+    )
 
 @router.get("/check/{user_id}", response_model=SummaryExistsResponse)
 async def check_today_summary_exists(

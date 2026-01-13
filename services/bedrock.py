@@ -23,8 +23,8 @@ class BedrockService:
         self.model_id = BEDROCK_MODEL_ID
         
         # 기본 모델 파라미터
-        self.default_temperature = 1
-        self.default_top_k = 250
+        self.default_temperature = 0.7
+        self.default_top_k = 50
         
         logger.info(f"BedrockService initialized with model: {self.model_id}")
     
