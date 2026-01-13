@@ -1,7 +1,7 @@
 import boto3
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # config.py에서 설정 가져오기
 from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, BEDROCK_MODEL_ID
@@ -21,14 +21,26 @@ class BedrockService:
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
         )
         self.model_id = BEDROCK_MODEL_ID
+        
+        # 기본 모델 파라미터
+        self.default_temperature = 0.3
+        self.default_top_k = 250
+        
         logger.info(f"BedrockService initialized with model: {self.model_id}")
     
-    async def summarize_content(self, content: str) -> str:
+    async def summarize_content(
+        self, 
+        content: str,
+        temperature: Optional[float] = None,
+        top_k: Optional[int] = None
+    ) -> str:
         """
         주어진 내용을 Claude를 사용하여 요약합니다.
         
         Args:
             content: 요약할 텍스트 내용
+            temperature: 응답의 무작위성 (0.0 ~ 1.0, 낮을수록 일관된 응답)
+            top_k: 상위 K개 토큰에서 샘플링 (1 ~ 500)
             
         Returns:
             요약된 텍스트
@@ -45,6 +57,10 @@ class BedrockService:
         if len(content) > 50000:  # 약 50KB 제한
             content = content[:50000] + "..."
         
+        # 파라미터 기본값 설정
+        temp = temperature if temperature is not None else self.default_temperature
+        tk = top_k if top_k is not None else self.default_top_k
+        
         # System prompt 설정
         system_prompt = """너는 일기를 매일 작성하는 맞춤법과 문단 나누기에 엄격한 학생이야."""
 
@@ -58,12 +74,16 @@ class BedrockService:
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 2000,
+            "temperature": temp,
+            "top_k": tk,
             "system": system_prompt,
             "messages": [{
                 "role": "user",
                 "content": user_message
             }]
         }
+        
+        logger.info(f"Bedrock 호출 - temperature: {temp}, top_k: {tk}")
         
         try:
             # Bedrock API 호출
