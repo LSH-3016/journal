@@ -25,7 +25,7 @@ spec:
         - name: AWS_REGION
           value: "us-east-1"
         - name: ALLOWED_ORIGINS
-          value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop"
+          value: "https://www.aws11.shop,https://aws11.shop,https://journal.aws11.shop,https://api.aws11.shop"
         - name: DEBUG
           value: "False"
         - name: ENVIRONMENT
@@ -36,13 +36,13 @@ spec:
           value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /journal/health
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
+            path: /journal/health
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -59,9 +59,6 @@ kind: Service
 metadata:
   name: journal-api-service
   namespace: default
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
 spec:
   selector:
     app: journal-api
@@ -69,8 +66,7 @@ spec:
     - protocol: TCP
       port: 8000
       targetPort: 8000
-      nodePort: 32000
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: ServiceAccount

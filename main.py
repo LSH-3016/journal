@@ -24,17 +24,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 헬스체크 엔드포인트
-@app.get("/health")
+# 헬스체크 엔드포인트 (ALB health check용 - /journal prefix 포함)
+@app.get("/journal/health")
 async def health_check():
     return {"status": "healthy", "service": "journal-api"}
 
-@app.get("/")
+@app.get("/journal")
 async def root():
-    return {"message": "Journal API is running", "docs": "/docs"}
+    return {"message": "Journal API is running", "docs": "/journal/docs"}
 
-# 라우터 등록
-app.include_router(messages.router)
-app.include_router(history.router)
-app.include_router(summary.router)
-app.include_router(flow.router)
+# 라우터 등록 (모든 라우터에 /journal prefix 적용)
+app.include_router(messages.router, prefix="/journal")
+app.include_router(history.router, prefix="/journal")
+app.include_router(summary.router, prefix="/journal")
+app.include_router(flow.router, prefix="/journal")
