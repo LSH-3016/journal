@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional, List
 import re
+import logging
 
 from database import get_db
 from models.message import Message
 from models.history import History
 from schemas.summary import SummaryRequest, SummaryResponse, SummaryExistsResponse
 from services.bedrock import bedrock_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/summary", tags=["summary"])
 
