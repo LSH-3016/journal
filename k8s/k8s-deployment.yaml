@@ -18,7 +18,7 @@ spec:
       serviceAccountName: journal-api-sa
       containers:
       - name: journal-api
-        image: 324547056370.dkr.ecr.us-east-1.amazonaws.com/journal-api:v36
+        image: 324547056370.dkr.ecr.us-east-1.amazonaws.com/journal-api:v37
         ports:
         - containerPort: 8000
         env:
