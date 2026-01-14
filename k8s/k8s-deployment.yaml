@@ -74,4 +74,4 @@ metadata:
   name: journal-api-sa
   namespace: default
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/journal-api-secrets-role
+    eks.amazonaws.com/role-arn: arn:aws:iam::324547056370:role/journal-api-secrets-role

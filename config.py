@@ -45,7 +45,7 @@ if db_secret:
     DB_NAME = db_secret.get("dbname")
     DB_USER = db_secret.get("username")
     DB_PASSWORD = db_secret.get("password")
-    logger.info(f"Using database from Secrets Manager: {DB_HOST}")
+    logger.info(f"Using database from Secrets Manager: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 else:
     # 환경변수에서 가져오기 (로컬 개발용)
     DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -53,7 +53,11 @@ else:
     DB_NAME = os.getenv("DB_NAME", "journal_db")
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
-    logger.info(f"Using database from environment variables: {DB_HOST}")
+    logger.warning(f"Failed to get database config from Secrets Manager, using environment variables: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    
+    # Production 환경에서 localhost를 사용하는 경우 경고
+    if os.getenv("ENVIRONMENT") == "production" and DB_HOST == "localhost":
+        logger.error("CRITICAL: Production environment is using localhost for database connection!")
 
 # AWS 자격 증명
 aws_secret = get_secret("journal-api/aws-credentials")
