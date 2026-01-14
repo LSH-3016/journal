@@ -18,7 +18,7 @@ spec:
       serviceAccountName: journal-api-sa
       containers:
       - name: journal-api
-        image: 324547056370.dkr.ecr.us-east-1.amazonaws.com/journal-api:v33
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/journal-api:v33
         ports:
         - containerPort: 8000
         env:
@@ -31,9 +31,9 @@ spec:
         - name: ENVIRONMENT
           value: "production"
         - name: S3_BUCKET_NAME
-          value: "knowledge-base-test-6575574"
+          value: "<S3_BUCKET_NAME>"
         - name: BEDROCK_MODEL_ID
-          value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+          value: "<BEDROCK_MODEL_ID>"
         livenessProbe:
           httpGet:
             path: /journal/health
@@ -74,4 +74,4 @@ metadata:
   name: journal-api-sa
   namespace: default
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::324547056370:role/journal-api-secrets-role
+    eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/journal-api-secrets-role

@@ -30,12 +30,13 @@ class BedrockFlowService:
         
         logger.info(f"BedrockFlowService initialized with flow: {self.flow_arn}")
     
-    def invoke_flow(self, user_input: str, current_date: date = None) -> Dict[str, Any]:
+    def invoke_flow(self, user_input: str, user_id: str, current_date: date = None) -> Dict[str, Any]:
         """
         Bedrock Flow를 호출하여 입력이 질문인지 데이터인지 판단합니다.
         
         Args:
             user_input: 사용자 입력 텍스트
+            user_id: Cognito 사용자 고유 ID (sub)
             current_date: 현재 날짜 (기본값: 오늘 날짜)
             
         Returns:
@@ -51,12 +52,11 @@ class BedrockFlowService:
             if current_date is None:
                 current_date = date.today()
             
-            current_date_str = current_date.strftime("%Y-%m-%d")
+            current_date_str = current_date.strftime("%Y.%m.%d")
             
-            # user_input과 current_date를 하나의 document로 합침
-            combined_input = f"current_date: {current_date_str}\n\n{user_input}"
+            # Flow 입력 구성 - string 타입으로 모든 내용 합쳐서 전송
+            combined_input = f"{user_input}\ncurrent_date: {current_date_str}\nuser_id: {user_id}"
             
-            # Flow 입력 구성
             inputs = [
                 {
                     'content': {

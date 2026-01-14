@@ -38,7 +38,11 @@ def process_with_flow(request: FlowRequest, db: Session = Depends(get_db)):
     """
     try:
         # Bedrock Flow 호출
-        flow_result = flow_service.invoke_flow(request.content)
+        flow_result = flow_service.invoke_flow(
+            user_input=request.content,
+            user_id=request.user_id,
+            current_date=request.record_date
+        )
         
         if flow_result["node_name"] == "Data_return":
             # 데이터인 경우: 메시지로 DB에만 저장 (답변 반환 안 함)
@@ -87,12 +91,15 @@ def process_with_flow(request: FlowRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Flow 처리 중 오류가 발생했습니다: {str(e)}")
 
 @router.post("/test")
-def test_flow(content: str):
+def test_flow(content: str, user_id: str = "test-user"):
     """
     Flow 테스트용 엔드포인트
     """
     try:
-        result = flow_service.invoke_flow(content)
+        result = flow_service.invoke_flow(
+            user_input=content,
+            user_id=user_id
+        )
         return {
             "input": content,
             "node_name": result["node_name"],

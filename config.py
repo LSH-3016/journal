@@ -75,8 +75,8 @@ else:
 
 # 기타 설정
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "knowledge-base-test-6575574")
-BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
