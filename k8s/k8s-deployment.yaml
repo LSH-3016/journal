@@ -31,9 +31,9 @@ spec:
         - name: ENVIRONMENT
           value: "production"
         - name: S3_BUCKET_NAME
-          value: "<S3_BUCKET_NAME>"
+          value: "knowledge-base-test-6575574"
         - name: BEDROCK_MODEL_ID
-          value: "<BEDROCK_MODEL_ID>"
+          value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
         livenessProbe:
           httpGet:
             path: /journal/health
