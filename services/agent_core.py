@@ -1,6 +1,7 @@
 import boto3
 import json
 import logging
+import uuid
 from typing import Dict, Any, Optional
 
 from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AGENT_RUNTIME_ARN
@@ -15,9 +16,9 @@ class AgentCoreService:
         if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
             raise ValueError("AWS 자격증명이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인해주세요.")
         
-        # Bedrock Agent Runtime 클라이언트 (Agent Core도 이 클라이언트 사용)
+        # Bedrock Agent Core 클라이언트
         self.client = boto3.client(
-            'bedrock-agent-runtime',
+            'bedrock-agentcore',
             region_name=AWS_REGION,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
@@ -79,7 +80,7 @@ class AgentCoreService:
         current_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        실제 Agent-Core 호출
+        실제 Agent-Core Runtime 호출
         
         Args:
             user_input: 사용자 입력
@@ -108,61 +109,25 @@ class AgentCoreService:
             if temperature is not None:
                 payload["temperature"] = temperature
             
-            input_text = json.dumps(payload, ensure_ascii=False)
-            logger.info(f"Request payload: {input_text}")
+            logger.info(f"Request payload: {json.dumps(payload, ensure_ascii=False)}")
             
-            # ARN에서 agent ID 추출
-            # ARN 형식: arn:aws:bedrock-agentcore:region:account:runtime/runtime-name
-            agent_id = self.agent_runtime_arn.split('/')[-1]
+            # Agent Core Runtime 호출
+            response = self.client.invoke_agent_runtime(
+                agentRuntimeArn=self.agent_runtime_arn,
+                runtimeSessionId=str(uuid.uuid4()),
+                payload=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                qualifier="DEFAULT"
+            )
             
-            try:
-                # 방법 1: invoke_agent 시도 (일반 Agent 방식)
-                logger.info(f"Attempting invoke_agent with agentId: {agent_id}")
-                response = self.client.invoke_agent(
-                    agentId=agent_id,
-                    agentAliasId='TSTALIASID',
-                    sessionId=f"{user_id}-{current_date or 'default'}",
-                    inputText=input_text
-                )
-                
-                # 스트림 응답 처리
-                result_text = ""
-                for event in response.get('completion', []):
-                    if 'chunk' in event:
-                        chunk = event['chunk']
-                        if 'bytes' in chunk:
-                            result_text += chunk['bytes'].decode('utf-8')
-                
-                logger.info(f"Agent 응답 수신: {len(result_text)} bytes")
-                
-            except Exception as e1:
-                logger.warning(f"invoke_agent 실패: {e1}")
-                logger.info("Attempting alternative method...")
-                
-                # 방법 2: Bedrock Runtime으로 직접 호출 시도
-                try:
-                    bedrock_runtime = boto3.client(
-                        'bedrock-runtime',
-                        region_name=AWS_REGION,
-                        aws_access_key_id=AWS_ACCESS_KEY_ID,
-                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-                    )
-                    
-                    # Agent Core를 모델처럼 호출
-                    response = bedrock_runtime.invoke_model(
-                        modelId=self.agent_runtime_arn,
-                        body=input_text,
-                        contentType='application/json'
-                    )
-                    
-                    result_text = response['body'].read().decode('utf-8')
-                    logger.info(f"Bedrock Runtime 응답 수신: {len(result_text)} bytes")
-                    
-                except Exception as e2:
-                    logger.error(f"Bedrock Runtime 호출도 실패: {e2}")
-                    raise e1  # 원래 에러 발생
+            logger.info(f"Agent Runtime 응답 수신")
             
-            logger.info(f"응답 내용: {result_text[:500]}...")
+            # 응답 수집
+            content = []
+            for chunk in response.get("response", []):
+                content.append(chunk.decode('utf-8'))
+            
+            result_text = ''.join(content)
+            logger.info(f"응답 내용 ({len(result_text)} bytes): {result_text[:500]}...")
             
             # 응답 파싱
             try:
@@ -172,6 +137,9 @@ class AgentCoreService:
                 if 'body' in result:
                     # 응답이 {"statusCode": 200, "body": {...}} 형태인 경우
                     actual_result = result['body']
+                elif 'statusCode' in result and result['statusCode'] == 200:
+                    # statusCode만 있고 body가 없는 경우
+                    actual_result = {k: v for k, v in result.items() if k != 'statusCode'}
                 else:
                     # 응답이 직접 {"type": "...", "content": "..."} 형태인 경우
                     actual_result = result
