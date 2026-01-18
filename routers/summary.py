@@ -79,6 +79,7 @@ async def _get_user_messages_summary(
         # Agent-Core를 사용하여 요약 생성
         agent_result = agent_core_service.orchestrate_request(
             user_input=combined_content,
+            user_id=user_id,
             request_type="summarize",
             temperature=temperature
         )

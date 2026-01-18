@@ -51,6 +51,7 @@ def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
         # Agent-Core 호출
         agent_result = agent_core_service.orchestrate_request(
             user_input=request.content,
+            user_id=request.user_id,
             request_type=request.request_type,
             temperature=request.temperature
         )
