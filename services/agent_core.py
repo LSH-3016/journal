@@ -35,6 +35,7 @@ class AgentCoreService:
         user_id: str,
         request_type: Optional[str] = None,
         temperature: Optional[float] = None,
+        current_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         사용자 요청을 분석하여 적절한 agent로 라우팅하는 메인 함수
@@ -45,6 +46,7 @@ class AgentCoreService:
             request_type (Optional[str]): 요청 타입 ('summarize' 또는 'question'). 
                                           None이면 orchestrator가 자동 판단
             temperature (Optional[float]): summarize agent용 temperature 파라미터 (0.0 ~ 1.0)
+            current_date (Optional[str]): 현재 날짜 (YYYY-MM-DD 형식, 검색 컨텍스트용)
         
         Returns:
             Dict[str, Any]: 처리 결과
@@ -57,15 +59,15 @@ class AgentCoreService:
         try:
             # Agent Runtime ARN이 설정되어 있으면 실제 Agent-Core 사용
             if self.agent_runtime_arn:
-                return self._invoke_agent_core(user_input, user_id, request_type, temperature)
+                return self._invoke_agent_core(user_input, user_id, request_type, temperature, current_date)
             
             # 설정되지 않았으면 임시 구현 사용
-            return self._fallback_implementation(user_input, user_id, request_type, temperature)
+            return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
         
         except Exception as e:
             logger.error(f"Agent-Core 처리 실패: {e}")
             # 실패 시 임시 구현으로 폴백
-            return self._fallback_implementation(user_input, user_id, request_type, temperature)
+            return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
     
     def _invoke_agent_core(
         self,
@@ -73,6 +75,7 @@ class AgentCoreService:
         user_id: str,
         request_type: Optional[str] = None,
         temperature: Optional[float] = None,
+        current_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         실제 Agent-Core 호출
@@ -82,12 +85,13 @@ class AgentCoreService:
             user_id: 사용자 ID (Knowledge Base 검색 필터용)
             request_type: 요청 타입
             temperature: temperature 파라미터
+            current_date: 현재 날짜 (YYYY-MM-DD)
         """
         # TODO: 실제 Agent-Core API 호출 구현
-        logger.info(f"Agent-Core 호출: {self.agent_runtime_arn}, user_id: {user_id}")
+        logger.info(f"Agent-Core 호출: {self.agent_runtime_arn}, user_id: {user_id}, date: {current_date}")
         
         # 임시로 폴백 구현 사용
-        return self._fallback_implementation(user_input, user_id, request_type, temperature)
+        return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
     
     def _fallback_implementation(
         self,
@@ -95,6 +99,7 @@ class AgentCoreService:
         user_id: str,
         request_type: Optional[str] = None,
         temperature: Optional[float] = None,
+        current_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         임시 구현 (Agent-Core 없이 동작)
@@ -104,6 +109,7 @@ class AgentCoreService:
             user_id: 사용자 ID
             request_type: 요청 타입
             temperature: temperature 파라미터
+            current_date: 현재 날짜 (YYYY-MM-DD)
         """
         # request_type이 명시되지 않은 경우 자동 판단
         if request_type is None:
@@ -120,7 +126,7 @@ class AgentCoreService:
         
         elif request_type == "question":
             # 질문 답변
-            result = self._question_agent(user_input, user_id)
+            result = self._question_agent(user_input, user_id, current_date)
             return {
                 "type": "answer",
                 "content": result,
@@ -223,24 +229,31 @@ class AgentCoreService:
             logger.error(f"Bedrock 호출 실패: {e}")
             raise Exception(f"일기 생성 실패: {str(e)}")
     
-    def _question_agent(self, question: str, user_id: str) -> str:
+    def _question_agent(self, question: str, user_id: str, current_date: Optional[str] = None) -> str:
         """
         질문 답변 agent
         
         Args:
             question: 사용자 질문
             user_id: 사용자 ID (Knowledge Base 검색 필터용)
+            current_date: 현재 날짜 (YYYY-MM-DD, 검색 컨텍스트용)
         
         Returns:
             답변 내용
         """
         # TODO: Agent-Core의 question agent 호출
         # TODO: user_id로 Knowledge Base 필터링하여 개인화된 답변 제공
+        # TODO: current_date를 검색 컨텍스트로 활용
         # 임시 구현: 직접 Bedrock 호출
-        logger.info(f"Question agent 호출 - user_id: {user_id}")
+        logger.info(f"Question agent 호출 - user_id: {user_id}, date: {current_date}")
         
         try:
             from config import BEDROCK_MODEL_ID
+            from datetime import date as date_module
+            
+            # current_date가 없으면 오늘 날짜 사용
+            if not current_date:
+                current_date = date_module.today().strftime("%Y-%m-%d")
             
             bedrock_client = boto3.client(
                 'bedrock-runtime',
@@ -250,16 +263,17 @@ class AgentCoreService:
             )
             
             # System prompt 설정
-            system_prompt = f"너는 사용자(ID: {user_id})의 일기 데이터를 기반으로 질문에 답변하는 AI 어시스턴트야. 친절하고 자연스럽게 답변해줘."
+            system_prompt = f"너는 사용자(ID: {user_id})의 일기 데이터를 기반으로 질문에 답변하는 AI 어시스턴트야. 현재 날짜는 {current_date}이야. 친절하고 자연스럽게 답변해줘."
             
             # User message 설정
             user_message = f"""사용자 질문: {question}
+현재 날짜: {current_date}
 
 현재는 일기 데이터에 접근할 수 없어서 일반적인 답변만 제공할 수 있어. 
 질문에 대해 도움이 될 만한 답변을 해줘.
 
-참고: 실제 Agent-Core 구현 시에는 사용자 ID({user_id})로 Knowledge Base를 필터링하여 
-해당 사용자의 일기 데이터를 기반으로 답변할 수 있어."""
+참고: 실제 Agent-Core 구현 시에는 사용자 ID({user_id})로 Knowledge Base를 필터링하고,
+현재 날짜({current_date})를 컨텍스트로 활용하여 해당 사용자의 일기 데이터를 기반으로 답변할 수 있어."""
             
             # Bedrock 요청 페이로드 구성
             payload = {

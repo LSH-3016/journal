@@ -49,11 +49,15 @@ def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
     """
     try:
         # Agent-Core 호출
+        # record_date가 있으면 사용, 없으면 오늘 날짜 사용
+        current_date = request.record_date.strftime("%Y-%m-%d") if request.record_date else date.today().strftime("%Y-%m-%d")
+        
         agent_result = agent_core_service.orchestrate_request(
             user_input=request.content,
             user_id=request.user_id,
             request_type=request.request_type,
-            temperature=request.temperature
+            temperature=request.temperature,
+            current_date=current_date
         )
         
         result_type = agent_result["type"]
@@ -157,8 +161,10 @@ def test_agent(
     try:
         result = agent_core_service.orchestrate_request(
             user_input=content,
+            user_id=user_id,
             request_type=request_type,
-            temperature=temperature
+            temperature=temperature,
+            current_date=date.today().strftime("%Y-%m-%d")
         )
         return {
             "input": content,
