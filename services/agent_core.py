@@ -15,9 +15,9 @@ class AgentCoreService:
         if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
             raise ValueError("AWS 자격증명이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인해주세요.")
         
-        # Bedrock Agent Core Runtime 클라이언트
+        # Bedrock Agent Runtime 클라이언트 (Agent Core도 이 클라이언트 사용)
         self.client = boto3.client(
-            'bedrock-agentcore-runtime',
+            'bedrock-agent-runtime',
             region_name=AWS_REGION,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
@@ -111,20 +111,62 @@ class AgentCoreService:
             input_text = json.dumps(payload, ensure_ascii=False)
             logger.info(f"Request payload: {input_text}")
             
-            # Bedrock Agent Core Runtime 호출
-            response = self.client.invoke_agent_runtime(
-                agentRuntimeArn=self.agent_runtime_arn,
-                inputText=input_text
-            )
+            # ARN에서 agent ID 추출
+            # ARN 형식: arn:aws:bedrock-agentcore:region:account:runtime/runtime-name
+            agent_id = self.agent_runtime_arn.split('/')[-1]
             
-            # 응답 처리
-            body = response['body'].read().decode('utf-8')
-            logger.info(f"Agent-Core Runtime 응답 수신: {len(body)} bytes")
-            logger.info(f"응답 내용: {body[:500]}...")
+            try:
+                # 방법 1: invoke_agent 시도 (일반 Agent 방식)
+                logger.info(f"Attempting invoke_agent with agentId: {agent_id}")
+                response = self.client.invoke_agent(
+                    agentId=agent_id,
+                    agentAliasId='TSTALIASID',
+                    sessionId=f"{user_id}-{current_date or 'default'}",
+                    inputText=input_text
+                )
+                
+                # 스트림 응답 처리
+                result_text = ""
+                for event in response.get('completion', []):
+                    if 'chunk' in event:
+                        chunk = event['chunk']
+                        if 'bytes' in chunk:
+                            result_text += chunk['bytes'].decode('utf-8')
+                
+                logger.info(f"Agent 응답 수신: {len(result_text)} bytes")
+                
+            except Exception as e1:
+                logger.warning(f"invoke_agent 실패: {e1}")
+                logger.info("Attempting alternative method...")
+                
+                # 방법 2: Bedrock Runtime으로 직접 호출 시도
+                try:
+                    bedrock_runtime = boto3.client(
+                        'bedrock-runtime',
+                        region_name=AWS_REGION,
+                        aws_access_key_id=AWS_ACCESS_KEY_ID,
+                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+                    )
+                    
+                    # Agent Core를 모델처럼 호출
+                    response = bedrock_runtime.invoke_model(
+                        modelId=self.agent_runtime_arn,
+                        body=input_text,
+                        contentType='application/json'
+                    )
+                    
+                    result_text = response['body'].read().decode('utf-8')
+                    logger.info(f"Bedrock Runtime 응답 수신: {len(result_text)} bytes")
+                    
+                except Exception as e2:
+                    logger.error(f"Bedrock Runtime 호출도 실패: {e2}")
+                    raise e1  # 원래 에러 발생
+            
+            logger.info(f"응답 내용: {result_text[:500]}...")
             
             # 응답 파싱
             try:
-                result = json.loads(body)
+                result = json.loads(result_text)
                 
                 # 응답 구조 확인 및 변환
                 if 'body' in result:
@@ -139,7 +181,7 @@ class AgentCoreService:
                 
             except json.JSONDecodeError as e:
                 logger.error(f"JSON 파싱 실패: {e}")
-                logger.error(f"원본 응답: {body}")
+                logger.error(f"원본 응답: {result_text}")
                 # 파싱 실패 시 폴백
                 return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
                 
