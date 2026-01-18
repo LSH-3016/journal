@@ -35,7 +35,7 @@ spec:
         - name: BEDROCK_MODEL_ID
           value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
         - name: AGENT_RUNTIME_ARN
-          value: "arn:aws:bedrock-agen
+          value: "arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht"
         livenessProbe:
           httpGet:
             path: /journal/health
