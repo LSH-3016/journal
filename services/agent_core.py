@@ -114,24 +114,60 @@ class AgentCoreService:
             # Agent Core Runtime 호출
             response = self.client.invoke_agent_runtime(
                 agentRuntimeArn=self.agent_runtime_arn,
-                runtimeSessionId=str(uuid.uuid4()),
+                runtimeSessionId=str(uuid.uuid4()),  # 매번 새로운 세션 ID
                 payload=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
                 qualifier="DEFAULT"
             )
             
             logger.info(f"Agent Runtime 응답 수신")
+            logger.info(f"Response type: {type(response)}")
+            logger.info(f"Response keys: {response.keys()}")
             
-            # 응답 수집
-            content = []
-            for chunk in response.get("response", []):
-                content.append(chunk.decode('utf-8'))
+            # 응답 수집 - 여러 타입 처리
+            content_parts = []
             
-            result_text = ''.join(content)
-            logger.info(f"응답 내용 ({len(result_text)} bytes): {result_text[:500]}...")
+            if 'response' in response:
+                response_body = response['response']
+                logger.info(f"Response body type: {type(response_body)}")
+                
+                # bytes 타입인 경우
+                if isinstance(response_body, bytes):
+                    content_parts.append(response_body.decode('utf-8'))
+                    logger.info("Response is bytes type")
+                
+                # 스트리밍 객체인 경우 (read 메서드가 있음)
+                elif hasattr(response_body, 'read'):
+                    content_parts.append(response_body.read().decode('utf-8'))
+                    logger.info("Response is streaming object with read()")
+                
+                # 리스트인 경우
+                elif isinstance(response_body, list):
+                    logger.info(f"Response is list with {len(response_body)} items")
+                    for chunk in response_body:
+                        if isinstance(chunk, bytes):
+                            content_parts.append(chunk.decode('utf-8'))
+                        elif isinstance(chunk, dict) and 'bytes' in chunk:
+                            content_parts.append(chunk['bytes'].decode('utf-8'))
+                
+                # 이터레이터인 경우
+                else:
+                    logger.info("Attempting to iterate response")
+                    try:
+                        for chunk in response_body:
+                            if isinstance(chunk, bytes):
+                                content_parts.append(chunk.decode('utf-8'))
+                            elif isinstance(chunk, dict) and 'bytes' in chunk:
+                                content_parts.append(chunk['bytes'].decode('utf-8'))
+                    except Exception as iter_error:
+                        logger.warning(f"Failed to iterate response: {iter_error}")
             
-            # 응답 파싱
+            # 전체 응답 조합
+            full_response = ''.join(content_parts)
+            logger.info(f"응답 내용 ({len(full_response)} bytes): {full_response[:500]}...")
+            
+            # JSON 파싱
             try:
-                result = json.loads(result_text)
+                result = json.loads(full_response)
                 
                 # 응답 구조 확인 및 변환
                 if 'body' in result:
@@ -149,12 +185,17 @@ class AgentCoreService:
                 
             except json.JSONDecodeError as e:
                 logger.error(f"JSON 파싱 실패: {e}")
-                logger.error(f"원본 응답: {result_text}")
+                logger.error(f"원본 응답: {full_response}")
                 # 파싱 실패 시 폴백
                 return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
                 
         except Exception as e:
             logger.error(f"Agent-Core Runtime 호출 실패: {type(e).__name__}: {str(e)}")
+            
+            # 에러 상세 정보 로깅
+            if hasattr(e, 'response'):
+                logger.error(f"Error response: {e.response}")
+            
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             logger.info("폴백 구현으로 전환")
