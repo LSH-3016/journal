@@ -218,10 +218,56 @@ class AgentCoreService:
             답변 내용
         """
         # TODO: Agent-Core의 question agent 호출
-        # 임시 구현
+        # 임시 구현: 직접 Bedrock 호출
         logger.info("Question agent 호출")
         
-        return f"'{question}'에 대한 답변입니다. (Agent-Core 구현 예정)"
+        try:
+            from config import BEDROCK_MODEL_ID
+            
+            bedrock_client = boto3.client(
+                'bedrock-runtime',
+                region_name=AWS_REGION,
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+            )
+            
+            # System prompt 설정
+            system_prompt = "너는 사용자의 일기 데이터를 기반으로 질문에 답변하는 AI 어시스턴트야. 친절하고 자연스럽게 답변해줘."
+            
+            # User message 설정
+            user_message = f"""사용자 질문: {question}
+
+현재는 일기 데이터에 접근할 수 없어서 일반적인 답변만 제공할 수 있어. 
+질문에 대해 도움이 될 만한 답변을 해줘."""
+            
+            # Bedrock 요청 페이로드 구성
+            payload = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1000,
+                "temperature": 0.7,
+                "system": system_prompt,
+                "messages": [{
+                    "role": "user",
+                    "content": user_message
+                }]
+            }
+            
+            # Bedrock API 호출
+            response = bedrock_client.invoke_model(
+                modelId=BEDROCK_MODEL_ID,
+                body=json.dumps(payload),
+                contentType='application/json'
+            )
+            
+            # 응답 처리
+            response_body = json.loads(response['body'].read())
+            answer = response_body['content'][0]['text'].strip()
+            
+            return answer
+            
+        except Exception as e:
+            logger.error(f"Bedrock 호출 실패: {e}")
+            return f"죄송합니다. 질문에 답변하는 중 오류가 발생했습니다: {str(e)}"
 
 # 싱글톤 인스턴스
 agent_core_service = AgentCoreService()
