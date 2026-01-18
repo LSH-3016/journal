@@ -8,7 +8,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 
 from database import Base, engine
-from routers import messages, history, summary, flow
+from routers import messages, history, summary, agent
 
 # 테이블 생성
 Base.metadata.create_all(bind=engine)
@@ -51,4 +51,4 @@ async def root():
 app.include_router(messages.router, prefix="/journal")
 app.include_router(history.router, prefix="/journal")
 app.include_router(summary.router, prefix="/journal")
-app.include_router(flow.router, prefix="/journal")
+app.include_router(agent.router, prefix="/journal")

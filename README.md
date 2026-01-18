@@ -4,138 +4,64 @@ AI 기반 일기 및 메시지 관리 시스템입니다. FastAPI와 AWS Bedrock
 
 ## 🚀 주요 기능
 
-### 📝 메시지 관리
-- 일일 메시지 저장 및 조회
-- 한국 시간(KST) 기준 당일 메시지 필터링
-- UUID 기반 고유 식별자
-
-### 📚 히스토리 관리
-- 요약된 일기 내용 저장
-- PostgreSQL DB + AWS S3 이중 저장
-- 이미지 URL과 텍스트 파일 URL 분리 관리
-- 태그 기반 분류 및 검색
-
-### 🤖 AI 기반 기능
-- **지능형 분류**: Bedrock Flow를 통한 자동 데이터/질문 분류
-- **자동 요약**: Claude를 활용한 메시지 요약 생성
-- **질문 응답**: 질문 입력 시 자동 답변 제공
-
-### ☁️ AWS 연동
-- **S3**: 텍스트 파일 및 이미지 저장
-- **Bedrock**: Claude 모델을 통한 AI 처리
-- **Bedrock Flow**: 지능형 워크플로우 처리
-
----
+- **메시지 관리**: 일일 메시지 저장/조회, KST 기준 필터링
+- **히스토리 관리**: PostgreSQL + S3 이중 저장, 태그 기반 분류
+- **AI 기능**: Agent-Core 자동 분류 (데이터/질문/일기), Claude 요약 생성, 질문 응답
+- **AWS 연동**: S3 저장, Bedrock Agent-Core AI 처리
 
 ## 🛠️ 기술 스택
 
-- **Backend**: FastAPI, Python 3.8+
-- **Database**: PostgreSQL
-- **AI/ML**: AWS Bedrock (Claude), Bedrock Flow
-- **Storage**: AWS S3
-- **ORM**: SQLAlchemy
-- **Validation**: Pydantic
-
----
-
-## 📋 사전 요구사항
-
-### 1. Python 환경
-```bash
-Python 3.8 이상
-pip 또는 poetry
-```
-
-### 2. PostgreSQL
-```bash
-PostgreSQL 12 이상
-```
-
-### 3. AWS 계정 및 권한
-```bash
-# 필요한 AWS 서비스
-- Bedrock (Claude 모델 액세스)
-- Bedrock Flow
-- S3 버킷
-- IAM 권한 설정
-```
+FastAPI, Python 3.8+, PostgreSQL, AWS Bedrock Agent-Core, AWS Bedrock (Claude), AWS S3, SQLAlchemy, Pydantic
 
 ---
 
 ## 🚀 설치 및 실행
 
-### 1. 프로젝트 클론
+### 로컬 개발
+
 ```bash
+# 1. 설치
 git clone <repository-url>
 cd journal-api
-```
-
-### 2. 가상환경 생성 및 활성화
-```bash
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-```
-
-### 3. 의존성 설치
-```bash
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-### 4. 환경변수 설정
-`.env` 파일을 생성하고 다음 내용을 설정하세요:
+# 2. PostgreSQL 설정
+# CREATE DATABASE chatdb;
+# CREATE USER chatuser WITH PASSWORD 'your_password';
+# GRANT ALL PRIVILEGES ON DATABASE chatdb TO chatuser;
 
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=journal_db
-DB_USER=your_username
-DB_PASSWORD=your_password
-
-# AWS Configuration
-AWS_ACCESS_KEY_ID=your_access_key_id
-AWS_SECRET_ACCESS_KEY=your_secret_access_key
+# 3. .env 파일 생성 (.env.example 참고)
+DATABASE_URL=postgresql://chatuser:password@localhost:5432/chatdb
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
 AWS_REGION=us-east-1
-
-# S3 Configuration
-S3_BUCKET_NAME=your-journal-bucket
-
-# Bedrock Configuration
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
-
-# Bedrock Flow Configuration
-BEDROCK_FLOW_ARN=arn:aws:bedrock:us-east-1:account:flow/FLOWID
-BEDROCK_FLOW_ALIAS=your-alias-id
-
-# Application Configuration
-DEBUG=True
+S3_BUCKET_NAME=knowledge-base-test-6575574
+BEDROCK_MODEL_ID=arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0
 ENVIRONMENT=development
+DEBUG=True
+
+# 4. 서버 실행
+uvicorn main:app --reload
 ```
 
-### 5. 데이터베이스 마이그레이션
-```bash
-# 마이그레이션 스크립트 실행
-python migrate_history_table.py
-```
+**로컬 URL:**
+- API: http://localhost:8000/journal
+- 문서: http://localhost:8000/journal/docs
 
-### 6. 서버 실행
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+### 프로덕션 환경
 
-서버가 실행되면 다음 URL에서 접근할 수 있습니다:
-- **API 서버**: http://localhost:8000
-- **API 문서**: http://localhost:8000/journal/docs
-- **ReDoc**: http://localhost:8000/journal/redoc
+프로덕션에서는 AWS Secrets Manager를 사용합니다:
+- `journal-api/database` - DB 연결 정보
+- `journal-api/aws-credentials` - AWS 자격 증명
+- `journal-api/bedrock` - Bedrock 설정
+
+환경변수에 `ENVIRONMENT=production` 설정 시 자동으로 Secrets Manager에서 로드합니다.
 
 **프로덕션 URL:**
-- **API 서버**: https://api.aws11.shop/journal
-- **API 문서**: https://api.aws11.shop/journal/docs
+- API: https://api.aws11.shop/journal
+- 문서: https://api.aws11.shop/journal/docs
 
 ---
 
@@ -145,89 +71,45 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 curl -X POST "http://localhost:8000/journal/messages" \
   -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user_001",
-    "content": "오늘 아침 7시에 기상했다"
-  }'
+  -d '{"user_id": "user_001", "content": "오늘 아침 7시에 기상했다"}'
 ```
 
-### 지능형 처리 (Flow API)
+### 통합 처리 (Agent-Core)
 ```bash
+# 자동 판단 (데이터/질문/일기 자동 분류)
 curl -X POST "http://localhost:8000/journal/process" \
   -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user_001",
-    "content": "7시에 기상했다",
-    "record_date": "2026-01-01",
-    "tags": ["일상"],
-    "s3_key": "https://example.com/image.jpg"
-  }'
+  -d '{"user_id": "user_001", "content": "오늘 아침 7시에 기상했다"}'
+
+# 일기 생성 (명시적 지정)
+curl -X POST "http://localhost:8000/journal/process" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_001", "content": "오늘 하루...", "request_type": "summarize", "temperature": 0.7}'
+
+# 질문 답변 (명시적 지정)
+curl -X POST "http://localhost:8000/journal/process" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_001", "content": "어제 뭐 했어?", "request_type": "question"}'
 ```
 
 ### AI 요약 생성
 ```bash
 curl -X POST "http://localhost:8000/journal/summary" \
   -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user_001",
-    "s3_key": "https://example.com/image.jpg"
-  }'
+  -d '{"user_id": "user_001", "temperature": 0.7}'
 ```
-
-### AI 요약 존재 확인
-```bash
-curl "http://localhost:8000/journal/summary/check/user_001"
-```
-
-**응답:**
-```json
-{
-  "exists": true,
-  "id": 123,
-  "record_date": "2026-01-01",
-  "summary": "오늘은 일찍 일어나서...",
-  "s3_key": "https://example.com/image.jpg"
-}
-```
-
-## 📖 API 사용법
 
 더 자세한 API 사용법은 [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)를 참조하세요.
-
-**빠른 링크:**
-- 📁 [프로젝트 구조 및 아키텍처](./PROJECT_OVERVIEW.md)
-- 🚀 [ArgoCD 빠른 시작 (5분)](./ARGOCD_QUICKSTART.md)
-- 📚 [ArgoCD 상세 설정](./ARGOCD_SETUP.md)
-- 🗄️ [데이터베이스 ERD](./DATABASE_ERD.md)
 
 ---
 
 ## 🗄️ 데이터베이스 구조
 
-### Messages 테이블
-```sql
-CREATE TABLE messages (
-    id UUID PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### History 테이블
-```sql
-CREATE TABLE history (
-    id BIGSERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    record_date DATE NOT NULL,
-    tags TEXT[],
-    s3_key TEXT,      -- 이미지 URL
-    text_url TEXT     -- 텍스트 파일 URL
-);
-```
-
 자세한 ERD는 [DATABASE_ERD.md](./DATABASE_ERD.md)를 참조하세요.
+
+**Messages 테이블:** `id` (UUID), `user_id`, `content`, `created_at`
+
+**History 테이블:** `id` (BIGSERIAL), `user_id`, `content`, `record_date`, `tags`, `s3_key`, `text_url`
 
 ---
 
@@ -235,238 +117,69 @@ CREATE TABLE history (
 
 ```
 journal-api/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # GitHub Actions - ECR 이미지 빌드 및 푸시
-│
-├── models/                     # SQLAlchemy 모델
-│   ├── __init__.py
-│   ├── message.py
-│   └── history.py
-│
-├── schemas/                    # Pydantic 스키마
-│   ├── __init__.py
-│   ├── message.py
-│   ├── history.py
-│   └── summary.py
-│
-├── routers/                    # FastAPI 라우터
-│   ├── __init__.py
-│   ├── messages.py
-│   ├── history.py
-│   ├── summary.py
-│   └── flow.py
-│
-├── services/                   # 비즈니스 로직
-│   ├── __init__.py
-│   ├── bedrock.py             # AWS Bedrock 서비스
-│   ├── s3.py                  # AWS S3 서비스
-│   └── flow.py                # Bedrock Flow 서비스
-│
-├── main.py                     # FastAPI 애플리케이션 진입점
-├── database.py                 # 데이터베이스 연결 설정
-├── config.py                   # 설정 관리
-├── requirements.txt            # Python 의존성
-├── Dockerfile                  # Docker 이미지 빌드
-├── .env                       # 환경변수 (git에 포함되지 않음)
-│
-├── k8s/                        # Kubernetes manifests
-│   ├── k8s-deployment.yaml     # Deployment, Service, ServiceAccount
-│   └── ingress.yaml            # Ingress (ALB)
-├── argocd-application.yaml     # ArgoCD Application 정의
-│
-└── docs/                       # 문서
-    ├── README.md              # 프로젝트 개요
-    ├── API_DOCUMENTATION.md   # API 상세 문서
-    ├── DATABASE_ERD.md        # 데이터베이스 ERD
-    ├── DATABASE_SETUP.md      # 데이터베이스 설정
-    ├── ARGOCD_QUICKSTART.md   # ArgoCD 빠른 시작 (5분)
-    ├── ARGOCD_SETUP.md        # ArgoCD 상세 설정
-    ├── SECRETS_SETUP.md       # AWS Secrets 설정
-    ├── SETUP_CLOUDFRONT.md    # CloudFront 설정
-    └── SETUP_S3_TO_API.md     # S3 연동 설정
+├── models/          # SQLAlchemy 모델
+├── schemas/         # Pydantic 스키마
+├── routers/         # FastAPI 라우터 (agent, messages, history, summary)
+├── services/        # 비즈니스 로직 (agent_core, s3)
+├── k8s/             # Kubernetes manifests
+├── main.py          # FastAPI 진입점
+├── database.py      # DB 연결
+├── config.py        # 설정 관리
+└── Dockerfile       # Docker 이미지
 ```
 
 ---
 
 ## 🔧 AWS 설정
 
-### 1. IAM 권한 설정
-다음 권한이 필요합니다:
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "bedrock:InvokeModel",
-                "bedrock:InvokeModelWithResponseStream",
-                "bedrock:InvokeFlow",
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
+**필요한 IAM 권한:** `bedrock-agent-runtime:InvokeAgent`, `bedrock:InvokeModel`, `s3:GetObject`, `s3:PutObject`
 
-### 2. Bedrock 모델 액세스
-AWS Console에서 다음 모델에 대한 액세스를 요청하세요:
-- Claude 3.5 Sonnet
-- 기타 사용하려는 Claude 모델
-
-### 3. S3 버킷 생성
-```bash
-aws s3 mb s3://your-journal-bucket --region us-east-1
-```
-
-### 4. Bedrock Flow 설정
-AWS Console에서 Flow를 생성하고 ARN을 환경변수에 설정하세요.
+**설정 항목:**
+- Bedrock Agent-Core 설정
+- Bedrock 모델 액세스 요청 (Claude 3.5 Sonnet)
+- S3 버킷 생성
 
 ---
 
 ## 🧪 테스트
 
-### 단위 테스트 실행
 ```bash
 pytest tests/
+curl http://localhost:8000/journal/health
 ```
-
-### API 테스트
-```bash
-# 서버가 실행 중인 상태에서
-curl http://localhost:8000/journal/docs
-```
-
----
-
-## 📊 모니터링 및 로깅
-
-### 로그 레벨 설정
-```python
-# main.py에서 로깅 레벨 조정
-import logging
-logging.basicConfig(level=logging.INFO)
-```
-
-### 주요 로그 확인 포인트
-- Flow 처리 결과
-- S3 업로드/다운로드 상태
-- Bedrock API 호출 결과
-- 데이터베이스 쿼리 성능
 
 ---
 
 ## 🚀 배포
 
-### GitOps 기반 배포 (ArgoCD)
-
-이 프로젝트는 GitOps 방식으로 배포됩니다:
-
-1. **GitHub Actions**: 코드 푸시 시 Docker 이미지를 빌드하여 ECR에 푸시
-2. **ArgoCD**: Git 저장소를 모니터링하여 EKS에 자동 배포
+### GitOps 배포 (ArgoCD)
 
 ```
-코드 푸시 → GitHub Actions → ECR 이미지 푸시 → ArgoCD → EKS 배포
+코드 푸시 → GitHub Actions (ECR 빌드) → ArgoCD → EKS 배포
 ```
 
-**배포 설정:**
-- GitHub Actions 워크플로우: `.github/workflows/deploy.yml`
-- ArgoCD Application: `argocd-application.yaml`
-- Kubernetes Manifests: `k8s-deployment.yaml`, `k8s-ingress.yaml`
-
-**배포 가이드:**
-- 🚀 **빠른 시작**: [ARGOCD_QUICKSTART.md](./ARGOCD_QUICKSTART.md) - 5분 안에 배포하기
-- 📚 **상세 가이드**: [ARGOCD_SETUP.md](./ARGOCD_SETUP.md) - 전체 설정 및 트러블슈팅
-
-### Docker를 사용한 로컬 배포
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
+**빠른 시작:**
 ```bash
-# 이미지 빌드
-docker build -t journal-api:latest .
+# 1. Git 저장소 등록
+argocd repo add https://github.com/LSH-3016/journal.git \
+  --username LSH-3016 --password <github-token>
 
-# 컨테이너 실행
+# 2. Application 생성
+kubectl apply -f argocd-application.yaml
+
+# 3. 배포 확인
+argocd app get journal-api
+```
+
+**네트워크:** `default` 네임스페이스, ALB 그룹 `one-api-alb`, 도메인 `api.aws11.shop/journal`
+
+**GitHub Secrets:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+
+### Docker 로컬 배포
+```bash
+docker build -t journal-api:latest .
 docker run -p 8000:8000 --env-file .env journal-api:latest
 ```
-
-### 환경별 설정
-- **개발환경**: `DEBUG=True`, 로컬 DB, Port Forward
-- **스테이징**: `DEBUG=False`, 클라우드 DB, ArgoCD 자동 배포
-- **프로덕션**: `DEBUG=False`, 프로덕션 DB, ArgoCD + 수동 승인
-
----
-
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
-
----
-
-## 📞 지원 및 문의
-
-- **이슈 리포트**: GitHub Issues
-- **문서**: [API 문서](./API_DOCUMENTATION.md), [ERD](./DATABASE_ERD.md)
-- **이메일**: your-email@example.com
-
----
-
-## 🔄 버전 히스토리
-
-### v1.0.0 (2026-01-01)
-- ✨ 초기 릴리즈
-- 📝 메시지 및 히스토리 관리 기능
-- 🤖 AI 기반 분류 및 요약 기능
-- ☁️ AWS S3 및 Bedrock 연동
-
-### 향후 계획
-- 📱 모바일 앱 지원
-- 🔍 고급 검색 기능
-- 📈 사용자 대시보드
-- 🔐 사용자 인증 시스템
-
----
-
-## ⚡ 성능 최적화
-
-### 데이터베이스 최적화
-- 적절한 인덱스 설정
-- 쿼리 최적화
-- 연결 풀링
-
-### API 최적화
-- 응답 캐싱
-- 페이지네이션
-- 비동기 처리
-
-### AWS 비용 최적화
-- S3 스토리지 클래스 최적화
-- Bedrock 사용량 모니터링
-- 불필요한 API 호출 최소화
 
 ---
 

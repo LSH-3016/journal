@@ -68,15 +68,6 @@ else:
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-# Bedrock 설정
-bedrock_secret = get_secret("journal-api/bedrock")
-if bedrock_secret:
-    BEDROCK_FLOW_ARN = bedrock_secret.get("flow_arn")
-    BEDROCK_FLOW_ALIAS = bedrock_secret.get("flow_alias")
-else:
-    BEDROCK_FLOW_ARN = os.getenv("BEDROCK_FLOW_ARN")
-    BEDROCK_FLOW_ALIAS = os.getenv("BEDROCK_FLOW_ALIAS")
-
 # 기타 설정
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")

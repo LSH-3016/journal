@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional
 import re
 import logging
 
@@ -9,7 +9,7 @@ from database import get_db
 from models.message import Message
 from models.history import History
 from schemas.summary import SummaryRequest, SummaryResponse, SummaryExistsResponse
-from services.bedrock import bedrock_service
+from services.agent_core import agent_core_service
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,9 @@ async def _get_user_messages_summary(
     target_date: Optional[date], 
     s3_key: Optional[str],
     temperature: Optional[float],
-    top_k: Optional[int],
     db: Session
 ) -> SummaryResponse:
-    """공통 요약 로직"""
+    """공통 요약 로직 - Agent-Core 사용"""
     # 사용자 ID 검증
     _validate_user_id(user_id)
     
@@ -77,12 +76,14 @@ async def _get_user_messages_summary(
     combined_content = "\n\n".join(content_list)
     
     try:
-        # Bedrock을 사용하여 요약 생성
-        summary = await bedrock_service.summarize_content(
-            combined_content,
-            temperature=temperature,
-            top_k=top_k
+        # Agent-Core를 사용하여 요약 생성
+        agent_result = agent_core_service.orchestrate_request(
+            user_input=combined_content,
+            request_type="summarize",
+            temperature=temperature
         )
+        
+        summary = agent_result["content"]
         
         # History에 요약 저장 (같은 날짜가 있으면 업데이트)
         existing_history = db.query(History).filter(
@@ -115,7 +116,7 @@ async def _get_user_messages_summary(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Bedrock 요약 생성 중 오류 발생: {e}")
+        logger.error(f"AI 요약 생성 중 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"AI 요약 생성 실패: {str(e)}")
 
 @router.post("", response_model=SummaryResponse)
@@ -129,14 +130,12 @@ async def create_summary(
     - user_id: 요약할 사용자의 ID
     - s3_key: 업로드된 파일의 S3 키 (선택사항)
     - temperature: 응답의 무작위성 (0.0 ~ 1.0, 선택사항, 기본값: 0.7)
-    - top_k: 상위 K개 토큰에서 샘플링 (1 ~ 500, 선택사항, 기본값: 50)
     """
     return await _get_user_messages_summary(
         request.user_id, 
         None, 
         request.s3_key, 
         request.temperature,
-        request.top_k,
         db
     )
 
@@ -146,7 +145,6 @@ async def get_summary(
     date: Optional[str] = Query(None, description="요약할 날짜 (YYYY-MM-DD 형식, 기본값: 오늘)"),
     s3_key: Optional[str] = Query(None, description="업로드된 파일의 S3 키"),
     temperature: Optional[float] = Query(None, ge=0.0, le=1.0, description="응답의 무작위성 (0.0 ~ 1.0)"),
-    top_k: Optional[int] = Query(None, ge=1, le=500, description="상위 K개 토큰에서 샘플링 (1 ~ 500)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -156,7 +154,6 @@ async def get_summary(
     - date: 요약할 날짜 (선택사항, 기본값: 오늘)
     - s3_key: 업로드된 파일의 S3 키 (선택사항)
     - temperature: 응답의 무작위성 (0.0 ~ 1.0, 선택사항, 기본값: 0.7)
-    - top_k: 상위 K개 토큰에서 샘플링 (1 ~ 500, 선택사항, 기본값: 50)
     """
     target_date = None
     if date:
@@ -170,7 +167,6 @@ async def get_summary(
         target_date, 
         s3_key, 
         temperature,
-        top_k,
         db
     )
 
@@ -204,7 +200,7 @@ async def check_today_summary_exists(
     if existing_summary:
         return SummaryExistsResponse(
             exists=True,
-            id=existing_summary.id,  # ID 추가
+            id=existing_summary.id,
             record_date=existing_summary.record_date,
             summary=existing_summary.content,
             s3_key=existing_summary.s3_key
