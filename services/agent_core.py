@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, Any, Optional
 
-from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AGENT_RUNTIME_ARN
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,12 @@ class AgentCoreService:
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
         )
         
-        logger.info("AgentCoreService initialized")
+        self.agent_runtime_arn = AGENT_RUNTIME_ARN
+        
+        if self.agent_runtime_arn:
+            logger.info(f"AgentCoreService initialized with ARN: {self.agent_runtime_arn}")
+        else:
+            logger.warning("Agent Runtime ARN이 설정되지 않았습니다. 임시 구현을 사용합니다.")
     
     def orchestrate_request(
         self,
@@ -48,42 +53,71 @@ class AgentCoreService:
             }
         """
         try:
-            # TODO: Agent-Core 구현
-            # 현재는 임시 구현
+            # Agent Runtime ARN이 설정되어 있으면 실제 Agent-Core 사용
+            if self.agent_runtime_arn:
+                return self._invoke_agent_core(user_input, request_type, temperature)
             
-            # request_type이 명시되지 않은 경우 자동 판단
-            if request_type is None:
-                request_type = self._classify_request(user_input)
-            
-            if request_type == "summarize":
-                # 일기 생성 (요약)
-                result = self._summarize_agent(user_input, temperature)
-                return {
-                    "type": "diary",
-                    "content": result,
-                    "message": "일기가 생성되었습니다."
-                }
-            
-            elif request_type == "question":
-                # 질문 답변
-                result = self._question_agent(user_input)
-                return {
-                    "type": "answer",
-                    "content": result,
-                    "message": "질문에 대한 답변입니다."
-                }
-            
-            else:
-                # 데이터 저장
-                return {
-                    "type": "data",
-                    "content": "",
-                    "message": "메시지가 저장되었습니다."
-                }
+            # 설정되지 않았으면 임시 구현 사용
+            return self._fallback_implementation(user_input, request_type, temperature)
         
         except Exception as e:
             logger.error(f"Agent-Core 처리 실패: {e}")
-            raise Exception(f"AI 처리 중 오류가 발생했습니다: {str(e)}")
+            # 실패 시 임시 구현으로 폴백
+            return self._fallback_implementation(user_input, request_type, temperature)
+    
+    def _invoke_agent_core(
+        self,
+        user_input: str,
+        request_type: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        실제 Agent-Core 호출
+        """
+        # TODO: 실제 Agent-Core API 호출 구현
+        logger.info(f"Agent-Core 호출: {self.agent_runtime_arn}")
+        
+        # 임시로 폴백 구현 사용
+        return self._fallback_implementation(user_input, request_type, temperature)
+    
+    def _fallback_implementation(
+        self,
+        user_input: str,
+        request_type: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        임시 구현 (Agent-Core 없이 동작)
+        """
+        # request_type이 명시되지 않은 경우 자동 판단
+        if request_type is None:
+            request_type = self._classify_request(user_input)
+        
+        if request_type == "summarize":
+            # 일기 생성 (요약)
+            result = self._summarize_agent(user_input, temperature)
+            return {
+                "type": "diary",
+                "content": result,
+                "message": "일기가 생성되었습니다."
+            }
+        
+        elif request_type == "question":
+            # 질문 답변
+            result = self._question_agent(user_input)
+            return {
+                "type": "answer",
+                "content": result,
+                "message": "질문에 대한 답변입니다."
+            }
+        
+        else:
+            # 데이터 저장
+            return {
+                "type": "data",
+                "content": "",
+                "message": "메시지가 저장되었습니다."
+            }
     
     def _classify_request(self, user_input: str) -> str:
         """

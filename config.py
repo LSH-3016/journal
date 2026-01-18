@@ -68,6 +68,13 @@ else:
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
+# Agent-Core 설정
+agent_secret = get_secret("journal-api/agent-core")
+if agent_secret:
+    AGENT_RUNTIME_ARN = agent_secret.get("runtime_arn")
+else:
+    AGENT_RUNTIME_ARN = os.getenv("AGENT_RUNTIME_ARN")
+
 # 기타 설정
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")

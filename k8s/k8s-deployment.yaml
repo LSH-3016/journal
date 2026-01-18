@@ -34,6 +34,8 @@ spec:
           value: "knowledge-base-test-6575574"
         - name: BEDROCK_MODEL_ID
           value: "arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        - name: AGENT_RUNTIME_ARN
+          value: "arn:aws:bedrock-agen
         livenessProbe:
           httpGet:
             path: /journal/health
