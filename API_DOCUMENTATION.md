@@ -347,12 +347,8 @@ AWS_REGION=us-east-1
 # S3
 S3_BUCKET_NAME=your-bucket-name
 
-# Bedrock
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
-
-# Bedrock Flow
-BEDROCK_FLOW_ARN=arn:aws:bedrock:us-east-1:account:flow/FLOWID
-BEDROCK_FLOW_ALIAS=TSTALIASID
+# Agent-Core
+AGENT_RUNTIME_ARN=arn:aws:bedrock-agentcore:us-east-1:account:runtime/your-agent-name
 ```
 
 ### 6.2 서버 실행
@@ -365,9 +361,10 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 7. 주요 특징
 
 ### 7.1 데이터 분류
-- **Flow API**: Bedrock Flow를 통해 입력을 자동으로 "데이터" 또는 "질문"으로 분류
+- **Agent-Core**: Bedrock Agent-Core를 통해 입력을 자동으로 "데이터", "질문", "일기"로 분류
 - **데이터**: 메시지 테이블에 저장, content는 빈 문자열로 반환
 - **질문**: 저장하지 않고 답변만 반환
+- **일기**: History 테이블에 저장, 생성된 일기 내용 반환
 - **current_date**: Flow 호출 시 현재 날짜를 함께 전송하여 날짜 기반 처리 지원
 
 ### 7.2 저장 방식

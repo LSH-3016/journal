@@ -15,8 +15,9 @@ class AgentCoreService:
         if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
             raise ValueError("AWS 자격증명이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인해주세요.")
         
+        # Bedrock Agent Core Runtime 클라이언트
         self.client = boto3.client(
-            'bedrock-agent-runtime',
+            'bedrock-agentcore-runtime',
             region_name=AWS_REGION,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
@@ -87,11 +88,67 @@ class AgentCoreService:
             temperature: temperature 파라미터
             current_date: 현재 날짜 (YYYY-MM-DD)
         """
-        # TODO: 실제 Agent-Core API 호출 구현
-        logger.info(f"Agent-Core 호출: {self.agent_runtime_arn}, user_id: {user_id}, date: {current_date}")
-        
-        # 임시로 폴백 구현 사용
-        return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
+        try:
+            logger.info(f"Agent-Core Runtime 호출 시작")
+            logger.info(f"Runtime ARN: {self.agent_runtime_arn}")
+            logger.info(f"Parameters - user_id: {user_id}, request_type: {request_type}, date: {current_date}")
+            
+            # 요청 페이로드 구성
+            payload = {
+                "content": user_input,
+                "user_id": user_id,
+                "record_date": current_date or ""
+            }
+            
+            # request_type이 명시된 경우 추가
+            if request_type:
+                payload["request_type"] = request_type
+            
+            # temperature가 있는 경우 추가
+            if temperature is not None:
+                payload["temperature"] = temperature
+            
+            input_text = json.dumps(payload, ensure_ascii=False)
+            logger.info(f"Request payload: {input_text}")
+            
+            # Bedrock Agent Core Runtime 호출
+            response = self.client.invoke_agent_runtime(
+                agentRuntimeArn=self.agent_runtime_arn,
+                inputText=input_text
+            )
+            
+            # 응답 처리
+            body = response['body'].read().decode('utf-8')
+            logger.info(f"Agent-Core Runtime 응답 수신: {len(body)} bytes")
+            logger.info(f"응답 내용: {body[:500]}...")
+            
+            # 응답 파싱
+            try:
+                result = json.loads(body)
+                
+                # 응답 구조 확인 및 변환
+                if 'body' in result:
+                    # 응답이 {"statusCode": 200, "body": {...}} 형태인 경우
+                    actual_result = result['body']
+                else:
+                    # 응답이 직접 {"type": "...", "content": "..."} 형태인 경우
+                    actual_result = result
+                
+                logger.info(f"파싱 성공 - 응답 타입: {actual_result.get('type')}")
+                return actual_result
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON 파싱 실패: {e}")
+                logger.error(f"원본 응답: {body}")
+                # 파싱 실패 시 폴백
+                return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
+                
+        except Exception as e:
+            logger.error(f"Agent-Core Runtime 호출 실패: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.info("폴백 구현으로 전환")
+            return self._fallback_implementation(user_input, user_id, request_type, temperature, current_date)
     
     def _fallback_implementation(
         self,
@@ -169,7 +226,7 @@ class AgentCoreService:
     
     def _summarize_agent(self, content: str, temperature: Optional[float] = None) -> str:
         """
-        일기 생성 agent
+        일기 생성 agent (폴백 구현)
         
         Args:
             content: 요약할 내용
@@ -178,60 +235,12 @@ class AgentCoreService:
         Returns:
             생성된 일기 내용
         """
-        # TODO: Agent-Core의 summarize agent 호출
-        # 임시 구현: 직접 Bedrock 호출
-        logger.info(f"Summarize agent 호출 - temperature: {temperature}")
-        
-        try:
-            from config import BEDROCK_MODEL_ID
-            
-            bedrock_client = boto3.client(
-                'bedrock-runtime',
-                region_name=AWS_REGION,
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-            )
-            
-            # System prompt 설정
-            system_prompt = "너는 일기를 매일 작성하는 맞춤법과 문단 나누기에 엄격한 학생이야."
-            
-            # User message 설정
-            user_message = f"""일기 형식으로 작성하고, 줄글 형식, 1인칭 시점으로 요약해줘. 날짜는 따로 적지않아도 돼.
-일기 내용:
-{content}"""
-            
-            # Bedrock 요청 페이로드 구성
-            payload = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2000,
-                "temperature": temperature if temperature is not None else 0.7,
-                "system": system_prompt,
-                "messages": [{
-                    "role": "user",
-                    "content": user_message
-                }]
-            }
-            
-            # Bedrock API 호출
-            response = bedrock_client.invoke_model(
-                modelId=BEDROCK_MODEL_ID,
-                body=json.dumps(payload),
-                contentType='application/json'
-            )
-            
-            # 응답 처리
-            response_body = json.loads(response['body'].read())
-            summary = response_body['content'][0]['text'].strip()
-            
-            return summary
-            
-        except Exception as e:
-            logger.error(f"Bedrock 호출 실패: {e}")
-            raise Exception(f"일기 생성 실패: {str(e)}")
+        logger.warning("Summarize agent 폴백 구현 호출 - Agent Core Runtime을 사용할 수 없습니다")
+        return f"[일기 생성 실패] Agent Core Runtime을 사용할 수 없습니다. 시스템 관리자에게 문의하세요.\n\n입력 내용: {content[:100]}..."
     
     def _question_agent(self, question: str, user_id: str, current_date: Optional[str] = None) -> str:
         """
-        질문 답변 agent
+        질문 답변 agent (폴백 구현)
         
         Args:
             question: 사용자 질문
@@ -241,68 +250,8 @@ class AgentCoreService:
         Returns:
             답변 내용
         """
-        # TODO: Agent-Core의 question agent 호출
-        # TODO: user_id로 Knowledge Base 필터링하여 개인화된 답변 제공
-        # TODO: current_date를 검색 컨텍스트로 활용
-        # 임시 구현: 직접 Bedrock 호출
-        logger.info(f"Question agent 호출 - user_id: {user_id}, date: {current_date}")
-        
-        try:
-            from config import BEDROCK_MODEL_ID
-            from datetime import date as date_module
-            
-            # current_date가 없으면 오늘 날짜 사용
-            if not current_date:
-                current_date = date_module.today().strftime("%Y-%m-%d")
-            
-            bedrock_client = boto3.client(
-                'bedrock-runtime',
-                region_name=AWS_REGION,
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-            )
-            
-            # System prompt 설정
-            system_prompt = f"너는 사용자(ID: {user_id})의 일기 데이터를 기반으로 질문에 답변하는 AI 어시스턴트야. 현재 날짜는 {current_date}이야. 친절하고 자연스럽게 답변해줘."
-            
-            # User message 설정
-            user_message = f"""사용자 질문: {question}
-현재 날짜: {current_date}
-
-현재는 일기 데이터에 접근할 수 없어서 일반적인 답변만 제공할 수 있어. 
-질문에 대해 도움이 될 만한 답변을 해줘.
-
-참고: 실제 Agent-Core 구현 시에는 사용자 ID({user_id})로 Knowledge Base를 필터링하고,
-현재 날짜({current_date})를 컨텍스트로 활용하여 해당 사용자의 일기 데이터를 기반으로 답변할 수 있어."""
-            
-            # Bedrock 요청 페이로드 구성
-            payload = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1000,
-                "temperature": 0.7,
-                "system": system_prompt,
-                "messages": [{
-                    "role": "user",
-                    "content": user_message
-                }]
-            }
-            
-            # Bedrock API 호출
-            response = bedrock_client.invoke_model(
-                modelId=BEDROCK_MODEL_ID,
-                body=json.dumps(payload),
-                contentType='application/json'
-            )
-            
-            # 응답 처리
-            response_body = json.loads(response['body'].read())
-            answer = response_body['content'][0]['text'].strip()
-            
-            return answer
-            
-        except Exception as e:
-            logger.error(f"Bedrock 호출 실패: {e}")
-            return f"죄송합니다. 질문에 답변하는 중 오류가 발생했습니다: {str(e)}"
+        logger.warning("Question agent 폴백 구현 호출 - Agent Core Runtime을 사용할 수 없습니다")
+        return "죄송합니다. 현재 질문 답변 서비스를 사용할 수 없습니다. Agent Core Runtime 연결을 확인해주세요."
 
 # 싱글톤 인스턴스
 agent_core_service = AgentCoreService()

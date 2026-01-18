@@ -38,7 +38,7 @@ AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 AWS_REGION=us-east-1
 S3_BUCKET_NAME=knowledge-base-test-6575574
-BEDROCK_MODEL_ID=arn:aws:bedrock:us-east-1:324547056370:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0
+AGENT_RUNTIME_ARN=arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht
 ENVIRONMENT=development
 DEBUG=True
 
