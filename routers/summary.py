@@ -114,29 +114,8 @@ async def _get_user_messages_summary(
         if not summary or not summary.strip():
             raise ValueError("요약 내용이 비어있습니다")
         
-        # History에 요약 저장 (같은 날짜가 있으면 업데이트)
-        existing_history = db.query(History).filter(
-            History.user_id == user_id,
-            History.record_date == target_date
-        ).first()
-        
-        if existing_history:
-            # 기존 기록 업데이트
-            existing_history.content = summary
-            if s3_key:
-                existing_history.s3_key = s3_key
-        else:
-            # 새 기록 생성
-            new_history = History(
-                user_id=user_id,
-                content=summary,
-                record_date=target_date,
-                s3_key=s3_key
-            )
-            db.add(new_history)
-        
-        db.commit()
-        
+        # 요약 결과만 반환 (DB 저장은 하지 않음)
+        # 프론트에서 사용자 확인 후 별도 API로 저장 요청
         return SummaryResponse(
             summary=summary,
             message_count=len(content_list),

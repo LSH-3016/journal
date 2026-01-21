@@ -36,14 +36,13 @@ def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
     Agent API를 사용하여 입력을 처리합니다.
     - 데이터인 경우: Messages 테이블에 저장
     - 질문인 경우: 답변만 반환 (저장하지 않음)
-    - 일기 생성인 경우: History 테이블에 저장
     
     Args:
         user_id: 사용자 ID
         content: 사용자 입력 내용
         request_type: 요청 타입 ("summarize", "question", None)
         temperature: summarize용 temperature (0.0 ~ 1.0)
-        record_date: 기록 날짜 (일기 생성 시 사용)
+        record_date: 기록 날짜
         tags: 태그 목록
         s3_key: S3 이미지 키
     """
@@ -89,50 +88,6 @@ def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
                 type="answer",
                 content=agent_result["content"],
                 message="질문에 대한 답변입니다."
-            )
-        
-        elif result_type == "diary":
-            # 일기 생성인 경우: History 테이블에 저장
-            logger.info("일기 생성 - History 저장")
-            
-            # 날짜 설정 (없으면 오늘)
-            target_date = request.record_date or date.today()
-            
-            # 기존 히스토리 확인
-            existing_history = db.query(History).filter(
-                History.user_id == request.user_id,
-                History.record_date == target_date
-            ).first()
-            
-            if existing_history:
-                # 기존 기록 업데이트
-                existing_history.content = agent_result["content"]
-                if request.s3_key:
-                    existing_history.s3_key = request.s3_key
-                if request.tags:
-                    existing_history.tags = request.tags
-                history_id = existing_history.id
-            else:
-                # 새 기록 생성
-                new_history = History(
-                    user_id=request.user_id,
-                    content=agent_result["content"],
-                    record_date=target_date,
-                    tags=request.tags,
-                    s3_key=request.s3_key
-                )
-                db.add(new_history)
-                db.commit()
-                db.refresh(new_history)
-                history_id = new_history.id
-            
-            db.commit()
-            
-            return AgentResponse(
-                type="diary",
-                content=agent_result["content"],
-                message="일기가 생성되었습니다.",
-                history_id=str(history_id)
             )
         
         else:
