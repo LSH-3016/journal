@@ -33,7 +33,7 @@ spec:
         - name: ENVIRONMENT
           value: "production"
         - name: S3_BUCKET_NAME
-          value: "knowledge-base-test-6575574"
+          value: "fproject-s3-1234567"
         - name: AGENT_API_URL
           value: "http://agent-api-service:8000"
         livenessProbe:
@@ -50,11 +50,11 @@ spec:
           periodSeconds: 5
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "125m"
-          limits:
-            memory: "216Mi"
+            memory: "256Mi"
             cpu: "250m"
+          limits:
+            memory: "432Mi"
+            cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
