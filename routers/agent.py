@@ -9,7 +9,7 @@ import logging
 from database import get_db
 from models.message import Message
 from models.history import History
-from services.agent_core import agent_core_service
+from services.agent_api import agent_api_service
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class AgentResponse(BaseModel):
 @router.post("/process", response_model=AgentResponse)
 def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
     """
-    Bedrock Agent-Core를 사용하여 입력을 처리합니다.
+    Agent API를 사용하여 입력을 처리합니다.
     - 데이터인 경우: Messages 테이블에 저장
     - 질문인 경우: 답변만 반환 (저장하지 않음)
     - 일기 생성인 경우: History 테이블에 저장
@@ -48,11 +48,11 @@ def process_with_agent(request: AgentRequest, db: Session = Depends(get_db)):
         s3_key: S3 이미지 키
     """
     try:
-        # Agent-Core 호출
+        # Agent API 호출
         # record_date가 있으면 사용, 없으면 오늘 날짜 사용
         current_date = request.record_date.strftime("%Y-%m-%d") if request.record_date else date.today().strftime("%Y-%m-%d")
         
-        agent_result = agent_core_service.orchestrate_request(
+        agent_result = agent_api_service.orchestrate_request(
             user_input=request.content,
             user_id=request.user_id,
             request_type=request.request_type,
@@ -156,10 +156,10 @@ def test_agent(
     temperature: Optional[float] = None
 ):
     """
-    Agent 테스트용 엔드포인트
+    Agent API 테스트용 엔드포인트
     """
     try:
-        result = agent_core_service.orchestrate_request(
+        result = agent_api_service.orchestrate_request(
             user_input=content,
             user_id=user_id,
             request_type=request_type,

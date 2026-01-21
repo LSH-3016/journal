@@ -4,7 +4,7 @@
 일기 및 메시지 관리를 위한 FastAPI 기반 백엔드 서비스입니다.
 - **메시지**: 일일 기록을 위한 짧은 텍스트 (DB만 저장)
 - **히스토리**: 요약된 일기 내용 (DB + S3 저장)
-- **Flow**: Bedrock Flow를 통한 지능형 분류 및 처리
+- **Agent API**: 외부 Agent API를 통한 지능형 분류 및 처리
 - **요약**: AI 기반 메시지 요약 기능
 
 ---
@@ -347,8 +347,8 @@ AWS_REGION=us-east-1
 # S3
 S3_BUCKET_NAME=your-bucket-name
 
-# Agent-Core
-AGENT_RUNTIME_ARN=arn:aws:bedrock-agentcore:us-east-1:account:runtime/your-agent-name
+# Agent API
+AGENT_API_URL=http://agent-api-service:8000
 ```
 
 ### 6.2 서버 실행
@@ -361,11 +361,11 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 7. 주요 특징
 
 ### 7.1 데이터 분류
-- **Agent-Core**: Bedrock Agent-Core를 통해 입력을 자동으로 "데이터", "질문", "일기"로 분류
+- **Agent API**: 외부 Agent API를 통해 입력을 자동으로 "데이터", "질문", "일기"로 분류
 - **데이터**: 메시지 테이블에 저장, content는 빈 문자열로 반환
 - **질문**: 저장하지 않고 답변만 반환
 - **일기**: History 테이블에 저장, 생성된 일기 내용 반환
-- **current_date**: Flow 호출 시 현재 날짜를 함께 전송하여 날짜 기반 처리 지원
+- **current_date**: Agent API 호출 시 현재 날짜를 함께 전송하여 날짜 기반 처리 지원
 
 ### 7.2 저장 방식
 - **메시지**: PostgreSQL DB만 저장
@@ -379,8 +379,8 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - 메시지 조회 시 오늘 날짜만 반환 (KST 기준)
 
 ### 7.4 AI 기능
-- **요약**: Claude를 통한 메시지 자동 요약
-- **분류**: Bedrock Flow를 통한 지능형 입력 분류
+- **요약**: AI를 통한 메시지 자동 요약
+- **분류**: Agent API를 통한 지능형 입력 분류
 - **답변**: 질문에 대한 자동 응답 생성
 
 ### 7.5 검색 기능

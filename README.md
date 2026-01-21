@@ -1,17 +1,17 @@
 # Journal API
 
-AI 기반 일기 및 메시지 관리 시스템입니다. FastAPI와 AWS Bedrock을 활용하여 지능형 텍스트 분류, 자동 요약, S3 저장 기능을 제공합니다.
+AI 기반 일기 및 메시지 관리 시스템입니다. FastAPI와 외부 Agent API를 활용하여 지능형 텍스트 분류, 자동 요약, S3 저장 기능을 제공합니다.
 
 ## 🚀 주요 기능
 
 - **메시지 관리**: 일일 메시지 저장/조회, KST 기준 필터링
 - **히스토리 관리**: PostgreSQL + S3 이중 저장, 태그 기반 분류
-- **AI 기능**: Agent-Core 자동 분류 (데이터/질문/일기), Claude 요약 생성, 질문 응답
-- **AWS 연동**: S3 저장, Bedrock Agent-Core AI 처리
+- **AI 기능**: Agent API 자동 분류 (데이터/질문/일기), AI 요약 생성, 질문 응답
+- **AWS 연동**: S3 저장
 
 ## 🛠️ 기술 스택
 
-FastAPI, Python 3.8+, PostgreSQL, AWS Bedrock Agent-Core, AWS Bedrock (Claude), AWS S3, SQLAlchemy, Pydantic
+FastAPI, Python 3.8+, PostgreSQL, AWS S3, SQLAlchemy, Pydantic, httpx
 
 ---
 
@@ -38,7 +38,7 @@ AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 AWS_REGION=us-east-1
 S3_BUCKET_NAME=knowledge-base-test-6575574
-AGENT_RUNTIME_ARN=arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht
+AGENT_API_URL=http://agent-api-service:8000
 ENVIRONMENT=development
 DEBUG=True
 
@@ -54,8 +54,7 @@ uvicorn main:app --reload
 
 프로덕션에서는 AWS Secrets Manager를 사용합니다:
 - `journal-api/database` - DB 연결 정보
-- `journal-api/aws-credentials` - AWS 자격 증명
-- `journal-api/bedrock` - Bedrock 설정
+- `journal-api/aws-credentials` - AWS 자격 증명 (S3용)
 
 환경변수에 `ENVIRONMENT=production` 설정 시 자동으로 Secrets Manager에서 로드합니다.
 
@@ -74,7 +73,7 @@ curl -X POST "http://localhost:8000/journal/messages" \
   -d '{"user_id": "user_001", "content": "오늘 아침 7시에 기상했다"}'
 ```
 
-### 통합 처리 (Agent-Core)
+### 통합 처리 (Agent API)
 ```bash
 # 자동 판단 (데이터/질문/일기 자동 분류)
 curl -X POST "http://localhost:8000/journal/process" \
@@ -120,7 +119,7 @@ journal-api/
 ├── models/          # SQLAlchemy 모델
 ├── schemas/         # Pydantic 스키마
 ├── routers/         # FastAPI 라우터 (agent, messages, history, summary)
-├── services/        # 비즈니스 로직 (agent_core, s3)
+├── services/        # 비즈니스 로직 (agent_api, s3)
 ├── k8s/             # Kubernetes manifests
 ├── main.py          # FastAPI 진입점
 ├── database.py      # DB 연결
@@ -132,12 +131,11 @@ journal-api/
 
 ## 🔧 AWS 설정
 
-**필요한 IAM 권한:** `bedrock-agent-runtime:InvokeAgent`, `bedrock:InvokeModel`, `s3:GetObject`, `s3:PutObject`
+**필요한 IAM 권한:** `s3:GetObject`, `s3:PutObject`, `secretsmanager:GetSecretValue`
 
 **설정 항목:**
-- Bedrock Agent-Core 설정
-- Bedrock 모델 액세스 요청 (Claude 3.5 Sonnet)
 - S3 버킷 생성
+- Secrets Manager 설정 (선택사항)
 
 ---
 

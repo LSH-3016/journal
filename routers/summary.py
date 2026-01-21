@@ -4,12 +4,13 @@ from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 import re
 import logging
+import httpx
 
 from database import get_db
 from models.message import Message
 from models.history import History
 from schemas.summary import SummaryRequest, SummaryResponse, SummaryExistsResponse
-from services.agent_core import agent_core_service
+from config import AGENT_API_URL
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ async def _get_user_messages_summary(
     temperature: Optional[float],
     db: Session
 ) -> SummaryResponse:
-    """공통 요약 로직 - Agent-Core 사용"""
+    """공통 요약 로직 - Agent API 사용"""
     # 사용자 ID 검증
     _validate_user_id(user_id)
     
@@ -76,15 +77,23 @@ async def _get_user_messages_summary(
     combined_content = "\n\n".join(content_list)
     
     try:
-        # Agent-Core를 사용하여 요약 생성
-        agent_result = agent_core_service.orchestrate_request(
-            user_input=combined_content,
-            user_id=user_id,
-            request_type="summarize",
-            temperature=temperature
-        )
+        # Agent API 서비스로 요약 요청 전송
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{AGENT_API_URL}/agent/summarize",
+                json={
+                    "content": combined_content,
+                    "temperature": temperature
+                }
+            )
+            response.raise_for_status()
+            agent_result = response.json()
         
-        summary = agent_result["content"]
+        # 응답 검증
+        if not agent_result.get("success"):
+            raise ValueError("요약 생성에 실패했습니다")
+        
+        summary = agent_result["summary"]
         
         # History에 요약 저장 (같은 날짜가 있으면 업데이트)
         existing_history = db.query(History).filter(
@@ -114,6 +123,12 @@ async def _get_user_messages_summary(
             message_count=len(content_list),
             s3_key=s3_key
         )
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Agent API 요청 실패 (HTTP {e.response.status_code}): {e.response.text}")
+        raise HTTPException(status_code=502, detail=f"Agent API 요청 실패: {e.response.status_code}")
+    except httpx.RequestError as e:
+        logger.error(f"Agent API 연결 실패: {e}")
+        raise HTTPException(status_code=503, detail="Agent API 서비스에 연결할 수 없습니다")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

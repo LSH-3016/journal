@@ -59,7 +59,7 @@ else:
     if os.getenv("ENVIRONMENT") == "production" and DB_HOST == "localhost":
         logger.error("CRITICAL: Production environment is using localhost for database connection!")
 
-# AWS 자격 증명
+# AWS 자격 증명 (S3용)
 aws_secret = get_secret("journal-api/aws-credentials")
 if aws_secret:
     AWS_ACCESS_KEY_ID = aws_secret.get("access_key_id")
@@ -68,12 +68,8 @@ else:
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-# Agent-Core 설정
-agent_secret = get_secret("journal-api/agent-core")
-if agent_secret:
-    AGENT_RUNTIME_ARN = agent_secret.get("runtime_arn")
-else:
-    AGENT_RUNTIME_ARN = os.getenv("AGENT_RUNTIME_ARN")
+# Agent API 설정
+AGENT_API_URL = os.getenv("AGENT_API_URL", "http://agent-api-service:8000")
 
 # 기타 설정
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")

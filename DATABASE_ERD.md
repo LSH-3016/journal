@@ -314,7 +314,7 @@ class SummaryExistsResponse(BaseModel):
 ## 11. Flow API 업데이트
 
 ### 11.1 current_date 전송
-Bedrock Flow 호출 시 현재 날짜를 함께 전송합니다:
+Agent API 호출 시 현재 날짜를 함께 전송합니다:
 ```
 current_date: 2026-01-02
 

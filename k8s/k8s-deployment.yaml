@@ -32,8 +32,8 @@ spec:
           value: "production"
         - name: S3_BUCKET_NAME
           value: "knowledge-base-test-6575574"
-        - name: AGENT_RUNTIME_ARN
-          value: "arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht"
+        - name: AGENT_API_URL
+          value: "http://agent-api-service:8000"
         livenessProbe:
           httpGet:
             path: /journal/health
