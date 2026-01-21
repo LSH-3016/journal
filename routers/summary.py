@@ -101,6 +101,9 @@ async def _get_user_messages_summary(
         # 응답이 {"summary": "..."} 형태인 경우
         elif "summary" in agent_result:
             summary = agent_result["summary"]
+        # 응답이 {"response": "..."} 형태인 경우
+        elif "response" in agent_result:
+            summary = agent_result["response"]
         # 응답이 문자열인 경우
         elif isinstance(agent_result, str):
             summary = agent_result
