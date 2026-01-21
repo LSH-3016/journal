@@ -24,20 +24,14 @@ def get_database_url():
 
 DATABASE_URL = get_database_url()
 
-try:
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=10,
-        max_overflow=20,
-        pool_pre_ping=True
-    )
-    # 연결 테스트
-    with engine.connect() as conn:
-        pass
-except Exception as e:
-    logger.error(f"데이터베이스 연결 실패: {e}")
-    logger.error("환경변수 설정을 확인해주세요.")
-    raise
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True  # 연결 전에 ping으로 확인
+)
+
+logger.info(f"Database engine created for: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
