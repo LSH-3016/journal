@@ -5,16 +5,15 @@ from typing import Optional
 from botocore.exceptions import ClientError
 
 # config.py에서 설정 가져오기
-from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME
+from config import AWS_REGION, S3_BUCKET_NAME
 
 logger = logging.getLogger(__name__)
 
 class S3Service:
     def __init__(self):
+        # IAM Role (IRSA)을 사용하므로 자격증명 불필요
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             region_name=AWS_REGION
         )
         self.bucket_name = S3_BUCKET_NAME

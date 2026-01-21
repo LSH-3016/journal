@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_secret(secret_name, region_name="us-east-1"):
+def get_secret(secret_name, region_name="ap-northeast-2"):
     """AWS Secrets Manager에서 시크릿 가져오기"""
     
     # 로컬 개발 환경에서는 환경변수 사용
@@ -38,7 +38,7 @@ def get_secret(secret_name, region_name="us-east-1"):
         return None
 
 # Database 설정
-db_secret = get_secret("journal-api/database")
+db_secret = get_secret("one-rds-credentials")
 if db_secret:
     DB_HOST = db_secret.get("host")
     DB_PORT = db_secret.get("port")
@@ -59,20 +59,11 @@ else:
     if os.getenv("ENVIRONMENT") == "production" and DB_HOST == "localhost":
         logger.error("CRITICAL: Production environment is using localhost for database connection!")
 
-# AWS 자격 증명 (S3용)
-aws_secret = get_secret("journal-api/aws-credentials")
-if aws_secret:
-    AWS_ACCESS_KEY_ID = aws_secret.get("access_key_id")
-    AWS_SECRET_ACCESS_KEY = aws_secret.get("secret_access_key")
-else:
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-
 # Agent API 설정
 AGENT_API_URL = os.getenv("AGENT_API_URL", "http://agent-api-service:8000")
 
 # 기타 설정
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-2")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
