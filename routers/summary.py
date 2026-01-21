@@ -89,11 +89,27 @@ async def _get_user_messages_summary(
             response.raise_for_status()
             agent_result = response.json()
         
-        # 응답 검증
-        if not agent_result.get("success"):
-            raise ValueError("요약 생성에 실패했습니다")
+        logger.info(f"Agent API 응답: {agent_result}")
         
-        summary = agent_result["summary"]
+        # 응답 형식 확인 및 처리
+        # 응답이 {"success": true, "summary": "..."} 형태인 경우
+        if "success" in agent_result:
+            if not agent_result.get("success"):
+                error_msg = agent_result.get("error", "요약 생성에 실패했습니다")
+                raise ValueError(error_msg)
+            summary = agent_result.get("summary", "")
+        # 응답이 {"summary": "..."} 형태인 경우
+        elif "summary" in agent_result:
+            summary = agent_result["summary"]
+        # 응답이 문자열인 경우
+        elif isinstance(agent_result, str):
+            summary = agent_result
+        else:
+            logger.error(f"예상하지 못한 응답 형식: {agent_result}")
+            raise ValueError("Agent API 응답 형식이 올바르지 않습니다")
+        
+        if not summary or not summary.strip():
+            raise ValueError("요약 내용이 비어있습니다")
         
         # History에 요약 저장 (같은 날짜가 있으면 업데이트)
         existing_history = db.query(History).filter(
