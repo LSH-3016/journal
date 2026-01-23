@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import logging
 import os
 
@@ -9,11 +10,24 @@ logging.basicConfig(level=logging.INFO)
 
 from database import Base, engine
 from routers import messages, history, summary, agent
+from tracing import setup_tracing
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 # 테이블 생성
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 시작 시 OpenTelemetry 설정
+    setup_tracing("journal-api")
+    HTTPXClientInstrumentor().instrument()
+    SQLAlchemyInstrumentor().instrument(engine=engine)
+    yield
+    # 종료 시 정리 작업 (필요시)
+
+app = FastAPI(lifespan=lifespan)
 
 # CORS 설정
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
@@ -52,3 +66,6 @@ app.include_router(messages.router, prefix="/journal")
 app.include_router(history.router, prefix="/journal")
 app.include_router(summary.router, prefix="/journal")
 app.include_router(agent.router, prefix="/journal")
+
+# FastAPI 자동 계측 (모든 HTTP 요청 트레이싱)
+FastAPIInstrumentor.instrument_app(app)

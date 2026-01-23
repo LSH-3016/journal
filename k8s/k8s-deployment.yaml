@@ -36,6 +36,13 @@ spec:
           value: "fproject-s3-1234567"
         - name: AGENT_API_URL
           value: "http://agent-api-service:8000"
+        # OpenTelemetry 설정
+        - name: OTEL_SERVICE_NAME
+          value: "journal-api"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://jaeger-collector.istio-system.svc.cluster.local:4317"
+        - name: APP_VERSION
+          value: "1.0.0"
         livenessProbe:
           httpGet:
             path: /journal/health
