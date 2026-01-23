@@ -52,6 +52,18 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+# 404 에러 핸들러 - CORS 헤더 포함
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": "Not found"},
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
 # 헬스체크 엔드포인트 (ALB health check용 - /journal prefix 포함)
 @app.get("/journal/health")
 async def health_check():
