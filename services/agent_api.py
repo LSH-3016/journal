@@ -88,7 +88,7 @@ class AgentAPIService:
             logger.info(f"Request payload: {json.dumps(payload, ensure_ascii=False)}")
             
             # HTTP POST 요청
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=60.0) as client:
                 response = client.post(
                     f"{self.agent_api_url}/agent",
                     json=payload
