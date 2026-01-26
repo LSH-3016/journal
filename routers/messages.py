@@ -121,11 +121,20 @@ def get_messages(
 def create_message(message: MessageCreate, db: Session = Depends(get_db)):
     """
     새로운 메시지를 저장하는 엔드포인트
+    
+    - user_id: 사용자 ID
+    - content: 메시지 내용
+    - created_at: 메시지 생성 시간 (선택사항, 기본값: 현재 시간)
     """
     db_message = Message(
         user_id=message.user_id,
         content=message.content
     )
+    
+    # created_at이 제공된 경우 설정
+    if message.created_at:
+        db_message.created_at = message.created_at
+    
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
